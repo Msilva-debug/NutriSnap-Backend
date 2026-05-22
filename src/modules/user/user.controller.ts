@@ -17,12 +17,12 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
-  @Get()
-  @ApiOperation({ summary: 'Get all users' })
-  @ApiResponse({ status: 200, description: 'List of all users' })
-  findAll() {
-    return this.usersService.findAll();
-  }
+  // @Get()
+  // @ApiOperation({ summary: 'Get all users' })
+  // @ApiResponse({ status: 200, description: 'List of all users' })
+  // findAll() {
+  //   return this.usersService.findAll();
+  // }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a user by ID' })
@@ -40,11 +40,11 @@ export class UsersController {
     return this.usersService.update(+id, updateUserDto);
   }
 
-  @Delete(':id')
-  @ApiOperation({ summary: 'Delete a user by ID' })
-  @ApiResponse({ status: 200, description: 'User deleted successfully' })
-  @ApiResponse({ status: 404, description: 'User not found' })
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(+id);
-  }
+  // @Delete(':id')
+  // @ApiOperation({ summary: 'Delete a user by ID' })
+  // @ApiResponse({ status: 200, description: 'User deleted successfully' })
+  // @ApiResponse({ status: 404, description: 'User not found' })
+  // remove(@Param('id') id: string) {
+  //   return this.usersService.remove(+id);
+  // }
 }
