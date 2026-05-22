@@ -1,10 +1,25 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { UsersModule } from './users/users.module';
+import { UsersModule } from './modules/user/user.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { MealModule } from './modules/meal/meal.module';
 
 @Module({
-  imports: [UsersModule],
+  imports: [
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: 'localhost',
+      port: 5432,
+      password: 'admin',
+      username: 'postgres',
+      database: 'nutrisnap',
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      synchronize: true,
+    }),
+    UsersModule,
+    MealModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
