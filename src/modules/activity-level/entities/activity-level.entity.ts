@@ -1,4 +1,4 @@
-import { Column, Entity, PrimaryColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 export enum ActivityLevelValue {
   SEDENTARY = 'sedentary',
@@ -10,9 +10,10 @@ export enum ActivityLevelValue {
 
 @Entity('activity_levels')
 export class ActivityLevel {
-  @PrimaryColumn({ type: 'varchar', length: 30 })
-  id: string;
-  @Column()
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ type: 'varchar', length: 30, unique: true })
   value: ActivityLevelValue;
 
   @Column()
@@ -20,7 +21,4 @@ export class ActivityLevel {
 
   @Column()
   description: string;
-
-  @Column({ type: 'int' })
-  sortOrder: number;
 }

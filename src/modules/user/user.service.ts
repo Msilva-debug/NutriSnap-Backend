@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ActivityLevelValue } from '../activity-level/entities/activity-level.entity';
+import {
+  ActivityLevel,
+  ActivityLevelValue,
+} from '../activity-level/entities/activity-level.entity';
 import { hashPassword } from '../auth/password.utils';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -23,6 +26,8 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    @InjectRepository(ActivityLevel)
+    private readonly activityLevelRepository: Repository<ActivityLevel>,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<PublicUser> {
@@ -35,9 +40,12 @@ export class UsersService {
     this.validateProfile(createUserDto);
 
     const existingUser = await this.findByEmail(createUserDto.email);
+    const activityLevel = await this.findActivityLevelByValue(
+      createUserDto.activityLevel,
+    );
 
     if (existingUser) {
-      throw new ConflictException('Email is already registered');
+      throw new ConflictException('El correo ya esta registrado');
     }
 
     const user = this.usersRepository.create({
@@ -49,7 +57,7 @@ export class UsersService {
       weight: Number(createUserDto.weight),
       height: Number(createUserDto.height),
       sex: createUserDto.sex,
-      activityLevel: createUserDto.activityLevel,
+      activityLevelId: activityLevel.id,
     });
     const savedUser = await this.usersRepository.save(user);
 
@@ -64,7 +72,7 @@ export class UsersService {
     const user = await this.usersRepository.findOne({ where: { id } });
 
     if (!user) {
-      throw new NotFoundException(`User #${id} not found`);
+      throw new NotFoundException(`Usuario #${id} no encontrado`);
     }
 
     return this.toPublicUser(user);
@@ -86,7 +94,7 @@ export class UsersService {
       .getOne();
 
     if (!user) {
-      throw new NotFoundException(`User #${id} not found`);
+      throw new NotFoundException(`Usuario #${id} no encontrado`);
     }
 
     if (updateUserDto.email) {
@@ -95,7 +103,7 @@ export class UsersService {
       const existingUser = await this.findByEmail(updateUserDto.email);
 
       if (existingUser && existingUser.id !== id) {
-        throw new ConflictException('Email is already registered');
+        throw new ConflictException('El correo ya esta registrado');
       }
     }
 
@@ -109,6 +117,10 @@ export class UsersService {
       );
     }
 
+    const activityLevel = updateUserDto.activityLevel
+      ? await this.findActivityLevelByValue(updateUserDto.activityLevel)
+      : undefined;
+
     const updatedUser = {
       ...user,
       email: updateUserDto.email ?? user.email,
@@ -118,7 +130,7 @@ export class UsersService {
       weight: updateUserDto.weight ? Number(updateUserDto.weight) : user.weight,
       height: updateUserDto.height ? Number(updateUserDto.height) : user.height,
       sex: updateUserDto.sex ?? user.sex,
-      activityLevel: updateUserDto.activityLevel ?? user.activityLevel,
+      activityLevelId: activityLevel?.id ?? user.activityLevelId,
       password: updateUserDto.password
         ? hashPassword(updateUserDto.password)
         : user.password,
@@ -161,7 +173,7 @@ export class UsersService {
 
     if (missingFields.length > 0) {
       throw new BadRequestException(
-        `Missing required fields: ${missingFields.join(', ')}`,
+        `Faltan campos obligatorios: ${missingFields.join(', ')}`,
       );
     }
 
@@ -170,13 +182,15 @@ export class UsersService {
 
   private validateEmail(email: string): void {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      throw new BadRequestException('Email must be valid');
+      throw new BadRequestException('El correo debe ser valido');
     }
   }
 
   private validatePassword(password?: string): void {
     if (!password || password.length < 6) {
-      throw new BadRequestException('Password must have at least 6 characters');
+      throw new BadRequestException(
+        'La contrasena debe tener al menos 6 caracteres',
+      );
     }
   }
 
@@ -185,17 +199,17 @@ export class UsersService {
     confirmPassword?: string,
   ): void {
     if (!confirmPassword || password !== confirmPassword) {
-      throw new BadRequestException('Passwords do not match');
+      throw new BadRequestException('Las contrasenas no coinciden');
     }
   }
 
   private validateProfile(userDto: Partial<UserProfileInput>): void {
-    this.validateRequiredString(userDto.birthdate, 'Birthdate');
-    this.validateNumberRange(userDto.age, 'Age', 1, 120);
-    this.validateNumberRange(userDto.weight, 'Weight', 20, 300);
-    this.validateNumberRange(userDto.height, 'Height', 50, 250);
-    this.validateRequiredString(userDto.sex, 'Sex');
-    this.validateRequiredString(userDto.activityLevel, 'Activity level');
+    this.validateRequiredString(userDto.birthdate, 'La fecha de nacimiento');
+    this.validateNumberRange(userDto.age, 'La edad', 1, 120);
+    this.validateNumberRange(userDto.weight, 'El peso', 20, 300);
+    this.validateNumberRange(userDto.height, 'La altura', 50, 250);
+    this.validateRequiredString(userDto.sex, 'El sexo');
+    this.validateRequiredString(userDto.activityLevel, 'El nivel de actividad');
     this.validateActivityLevel(userDto.activityLevel);
   }
 
@@ -208,7 +222,7 @@ export class UsersService {
     }
 
     if (value === null || value.trim() === '') {
-      throw new BadRequestException(`${label} is required`);
+      throw new BadRequestException(`${label} es obligatorio`);
     }
   }
 
@@ -230,7 +244,7 @@ export class UsersService {
       numericValue > max
     ) {
       throw new BadRequestException(
-        `${label} must be between ${min} and ${max}`,
+        `${label} debe estar entre ${min} y ${max}`,
       );
     }
   }
@@ -242,7 +256,23 @@ export class UsersService {
       activityLevel !== undefined &&
       !Object.values(ActivityLevelValue).includes(activityLevel)
     ) {
-      throw new BadRequestException('Activity level is invalid');
+      throw new BadRequestException('El nivel de actividad es invalido');
     }
+  }
+
+  private async findActivityLevelByValue(
+    activityLevel: ActivityLevelValue,
+  ): Promise<ActivityLevel> {
+    const existingActivityLevel = await this.activityLevelRepository.findOne({
+      where: {
+        value: activityLevel,
+      },
+    });
+
+    if (!existingActivityLevel) {
+      throw new BadRequestException('El nivel de actividad no existe');
+    }
+
+    return existingActivityLevel;
   }
 }

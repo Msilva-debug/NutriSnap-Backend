@@ -3,15 +3,15 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 
-@ApiTags('auth')
+@ApiTags('autenticacion')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  @ApiOperation({ summary: 'Login and get a JWT access token' })
-  @ApiResponse({ status: 201, description: 'JWT generated successfully' })
-  @ApiResponse({ status: 401, description: 'Invalid email or password' })
+  @ApiOperation({ summary: 'Iniciar sesion y obtener un token JWT' })
+  @ApiResponse({ status: 201, description: 'JWT generado correctamente' })
+  @ApiResponse({ status: 401, description: 'Correo o contrasena invalidos' })
   login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }

@@ -10,10 +10,6 @@ export class ActivityLevelService {
     private readonly activityLevelRepository: Repository<ActivityLevel>,
   ) {}
   findAll(): Promise<ActivityLevel[]> {
-    return this.activityLevelRepository.find({
-      order: {
-        sortOrder: 'ASC',
-      },
-    });
+    return this.activityLevelRepository.find({});
   }
 }

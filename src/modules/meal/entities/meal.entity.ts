@@ -7,7 +7,7 @@ export enum MealType {
   SNACK = 'snack',
 }
 
-@Entity('meal')
+@Entity('meals')
 export class Meal {
   @PrimaryGeneratedColumn('uuid')
   id: string;

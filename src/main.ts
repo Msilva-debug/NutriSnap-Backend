@@ -11,13 +11,13 @@ async function bootstrap() {
   });
   const config = new DocumentBuilder()
     .setTitle('NutriSnap API')
-    .setDescription('API documentation for NutriSnap Backend')
+    .setDescription('Documentacion de la API de NutriSnap Backend')
     .setVersion('1.0')
     .addBearerAuth()
-    .addTag('auth')
-    .addTag('users')
-    .addTag('meals')
-    .addTag('activity-levels')
+    .addTag('autenticacion')
+    .addTag('usuarios')
+    .addTag('comidas')
+    .addTag('niveles de actividad')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

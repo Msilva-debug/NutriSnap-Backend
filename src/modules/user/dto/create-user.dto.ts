@@ -4,62 +4,62 @@ import { ActivityLevelValue } from '../../activity-level/entities/activity-level
 export class CreateUserDto {
   @ApiProperty({
     example: 'john@example.com',
-    description: 'User email address',
+    description: 'Correo electronico del usuario',
   })
   email: string;
 
   @ApiProperty({
-    example: 'John Doe',
-    description: 'User full name',
+    example: 'Juan Perez',
+    description: 'Nombre completo del usuario',
   })
   name: string;
 
   @ApiProperty({
     example: 'Password123',
-    description: 'User password',
+    description: 'Contrasena del usuario',
   })
   password: string;
 
   @ApiProperty({
     example: 'Password123',
-    description: 'User password confirmation',
+    description: 'Confirmacion de la contrasena del usuario',
   })
   confirmPassword: string;
 
   @ApiProperty({
     example: '1998-05-22',
-    description: 'User birthdate',
+    description: 'Fecha de nacimiento del usuario',
   })
   birthdate: string;
 
   @ApiProperty({
     example: 26,
-    description: 'User age',
+    description: 'Edad del usuario',
   })
   age: number;
 
   @ApiProperty({
     example: 70,
-    description: 'User weight in kilograms',
+    description: 'Peso del usuario en kilogramos',
   })
   weight: number;
 
   @ApiProperty({
     example: 175,
-    description: 'User height in centimeters',
+    description: 'Altura del usuario en centimetros',
   })
   height: number;
 
   @ApiProperty({
-    example: 'male',
-    description: 'User sex',
+    example: 'masculino',
+    description: 'Sexo del usuario',
   })
   sex: string;
 
   @ApiProperty({
     enum: ActivityLevelValue,
     example: ActivityLevelValue.MODERATE,
-    description: 'User activity level',
+    description: 'Nivel de actividad del usuario',
   })
   activityLevel: ActivityLevelValue;
 }

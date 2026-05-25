@@ -17,7 +17,7 @@ export class AuthService {
       user && verifyPassword(loginDto.password, user.password);
 
     if (!user || !isPasswordValid) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException('Correo o contrasena invalidos');
     }
 
     const payload = {
@@ -28,11 +28,6 @@ export class AuthService {
 
     return {
       access_token: await this.jwtService.signAsync(payload),
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-      },
     };
   }
 }

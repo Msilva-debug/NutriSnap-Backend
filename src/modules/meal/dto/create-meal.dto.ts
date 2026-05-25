@@ -3,45 +3,45 @@ import { MealType } from '../entities/meal.entity';
 
 export class CreateMealDto {
   @ApiProperty({
-    example: 'Oatmeal with banana',
-    description: 'Name of the meal',
+    example: 'Avena con banano',
+    description: 'Nombre de la comida',
   })
   name: string;
 
   @ApiProperty({
     example: 350,
-    description: 'Calories in the meal',
+    description: 'Calorias de la comida',
   })
   calories: number;
 
   @ApiProperty({
     example: '08:30',
-    description: 'Meal time',
+    description: 'Hora de la comida',
   })
   time: string;
 
   @ApiProperty({
     enum: MealType,
     example: MealType.BREAKFAST,
-    description: 'Meal type',
+    description: 'Tipo de comida',
   })
   type: MealType;
 
   @ApiPropertyOptional({
     example: 20,
-    description: 'Protein content in grams',
+    description: 'Proteinas en gramos',
   })
   proteins?: number;
 
   @ApiPropertyOptional({
     example: 45,
-    description: 'Carbohydrate content in grams',
+    description: 'Carbohidratos en gramos',
   })
   carbs?: number;
 
   @ApiPropertyOptional({
     example: 8,
-    description: 'Fat content in grams',
+    description: 'Grasas en gramos',
   })
   fats?: number;
 }

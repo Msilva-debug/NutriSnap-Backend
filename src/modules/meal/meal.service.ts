@@ -47,7 +47,7 @@ export class MealService {
     const meal = await this.mealRepository.findOne({ where: { id } });
 
     if (!meal) {
-      throw new NotFoundException(`Meal #${id} not found`);
+      throw new NotFoundException(`Comida #${id} no encontrada`);
     }
 
     return meal;
@@ -91,7 +91,7 @@ export class MealService {
 
   private validateMealType(type: MealType): void {
     if (!Object.values(MealType).includes(type)) {
-      throw new BadRequestException('Invalid meal type');
+      throw new BadRequestException('El tipo de comida es invalido');
     }
   }
 }

@@ -5,12 +5,9 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import {
-  ActivityLevel,
-  ActivityLevelValue,
-} from '../../activity-level/entities/activity-level.entity';
+import { ActivityLevel } from '../../activity-level/entities/activity-level.entity';
 
-@Entity('user')
+@Entity('users')
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
@@ -39,14 +36,14 @@ export class User {
   @Column()
   sex: string;
 
-  @Column({ type: 'varchar', length: 30 })
-  activityLevel: ActivityLevelValue;
+  @Column({ type: 'int' })
+  activityLevelId: number;
 
   @ManyToOne(() => ActivityLevel, {
     nullable: false,
     onDelete: 'RESTRICT',
     onUpdate: 'CASCADE',
   })
-  @JoinColumn({ name: 'activityLevel', referencedColumnName: 'id' })
+  @JoinColumn({ name: 'activityLevelId', referencedColumnName: 'id' })
   activityLevelOption: ActivityLevel;
 }

@@ -19,7 +19,7 @@ import { MealService } from './meal.service';
 import { CreateMealDto } from './dto/create-meal.dto';
 import { UpdateMealDto } from './dto/update-meal.dto';
 
-@ApiTags('meals')
+@ApiTags('comidas')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('meal')
@@ -27,40 +27,40 @@ export class MealController {
   constructor(private readonly mealService: MealService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create a new meal' })
-  @ApiResponse({ status: 201, description: 'Meal created successfully' })
-  @ApiResponse({ status: 400, description: 'Invalid request body' })
+  @ApiOperation({ summary: 'Crear una nueva comida' })
+  @ApiResponse({ status: 201, description: 'Comida creada correctamente' })
+  @ApiResponse({ status: 400, description: 'Cuerpo de solicitud invalido' })
   create(@Body() createMealDto: CreateMealDto) {
     return this.mealService.create(createMealDto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all meals' })
-  @ApiResponse({ status: 200, description: 'List of all meals' })
+  @ApiOperation({ summary: 'Obtener todas las comidas' })
+  @ApiResponse({ status: 200, description: 'Listado de comidas' })
   findAll() {
     return this.mealService.findAll();
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get a meal by ID' })
-  @ApiResponse({ status: 200, description: 'Meal found' })
-  @ApiResponse({ status: 404, description: 'Meal not found' })
+  @ApiOperation({ summary: 'Obtener una comida por ID' })
+  @ApiResponse({ status: 200, description: 'Comida encontrada' })
+  @ApiResponse({ status: 404, description: 'Comida no encontrada' })
   findOne(@Param('id') id: string) {
     return this.mealService.findOne(id);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update a meal by ID' })
-  @ApiResponse({ status: 200, description: 'Meal updated successfully' })
-  @ApiResponse({ status: 404, description: 'Meal not found' })
+  @ApiOperation({ summary: 'Actualizar una comida por ID' })
+  @ApiResponse({ status: 200, description: 'Comida actualizada correctamente' })
+  @ApiResponse({ status: 404, description: 'Comida no encontrada' })
   update(@Param('id') id: string, @Body() updateMealDto: UpdateMealDto) {
     return this.mealService.update(id, updateMealDto);
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete a meal by ID' })
-  @ApiResponse({ status: 200, description: 'Meal deleted successfully' })
-  @ApiResponse({ status: 404, description: 'Meal not found' })
+  @ApiOperation({ summary: 'Eliminar una comida por ID' })
+  @ApiResponse({ status: 200, description: 'Comida eliminada correctamente' })
+  @ApiResponse({ status: 404, description: 'Comida no encontrada' })
   remove(@Param('id') id: string) {
     return this.mealService.remove(id);
   }
