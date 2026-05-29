@@ -1,26 +1,114 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateMealDto } from './dto/create-meal.dto';
 import { UpdateMealDto } from './dto/update-meal.dto';
+import { Meal, MealType } from './entities/meal.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class MealService {
-  create(createMealDto: CreateMealDto) {
-    return 'This action adds a new meal';
+  constructor(
+    @InjectRepository(Meal)
+    private readonly mealRepository: Repository<Meal>,
+  ) {}
+
+  async create(createMealDto: CreateMealDto): Promise<Meal> {
+    this.validateMealType(createMealDto.type);
+    const now = new Date();
+
+    const meal = this.mealRepository.create({
+      name: createMealDto.name,
+      calories: Number(createMealDto.calories),
+      time: this.formatServerTime(now),
+      date: this.formatServerDate(now),
+      type: createMealDto.type,
+      proteins:
+        createMealDto.proteins !== undefined
+          ? Number(createMealDto.proteins)
+          : undefined,
+      carbs:
+        createMealDto.carbs !== undefined
+          ? Number(createMealDto.carbs)
+          : undefined,
+      fats:
+        createMealDto.fats !== undefined
+          ? Number(createMealDto.fats)
+          : undefined,
+    });
+
+    return this.mealRepository.save(meal);
   }
 
   findAll() {
     return `This action returns all meal`;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} meal`;
+  async findOne(id: number): Promise<Meal> {
+    const meal = await this.mealRepository.findOne({ where: { id } });
+
+    if (!meal) {
+      throw new NotFoundException(`Comida #${id} no encontrada`);
+    }
+
+    return meal;
   }
 
-  update(id: number, updateMealDto: UpdateMealDto) {
-    return `This action updates a #${id} meal`;
+  async update(id: number, updateMealDto: UpdateMealDto): Promise<Meal> {
+    const meal = await this.findOne(id);
+
+    if (updateMealDto.type !== undefined) {
+      this.validateMealType(updateMealDto.type);
+    }
+
+    const updatedMeal = this.mealRepository.merge(meal, {
+      name: updateMealDto.name ?? meal.name,
+      type: updateMealDto.type ?? meal.type,
+      calories:
+        updateMealDto.calories !== undefined
+          ? Number(updateMealDto.calories)
+          : meal.calories,
+      proteins:
+        updateMealDto.proteins !== undefined
+          ? Number(updateMealDto.proteins)
+          : meal.proteins,
+      carbs:
+        updateMealDto.carbs !== undefined
+          ? Number(updateMealDto.carbs)
+          : meal.carbs,
+      fats:
+        updateMealDto.fats !== undefined
+          ? Number(updateMealDto.fats)
+          : meal.fats,
+    });
+
+    return this.mealRepository.save(updatedMeal);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} meal`;
+  async remove(id: number): Promise<Meal> {
+    const meal = await this.findOne(id);
+
+    return this.mealRepository.remove(meal);
+  }
+
+  private validateMealType(type: MealType): void {
+    if (!Object.values(MealType).includes(type)) {
+      throw new BadRequestException('El tipo de comida es invalido');
+    }
+  }
+
+  private formatServerTime(date: Date): string {
+    return date.toTimeString().slice(0, 8);
+  }
+
+  private formatServerDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
   }
 }
