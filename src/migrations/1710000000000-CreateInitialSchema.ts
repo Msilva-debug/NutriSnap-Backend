@@ -5,20 +5,11 @@ export class CreateInitialSchema1710000000000 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR NOT NULL,
-        email VARCHAR NOT NULL
-      );
-    `);
-
-    await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS activity_levels (
-        id BIGSERIAL PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         value VARCHAR(30) NOT NULL UNIQUE,
         label VARCHAR NOT NULL,
-        description VARCHAR NOT NULL,
-        sort_order INTEGER NOT NULL
+        description VARCHAR NOT NULL
       );
     `);
 
@@ -33,6 +24,26 @@ export class CreateInitialSchema1710000000000 implements MigrationInterface {
       ON CONFLICT (value) DO UPDATE SET
         label = EXCLUDED.label,
         description = EXCLUDED.description;
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR NOT NULL,
+        email VARCHAR NOT NULL UNIQUE,
+        password VARCHAR NOT NULL DEFAULT '',
+        birthdate DATE NOT NULL,
+        age INTEGER NOT NULL,
+        weight DOUBLE PRECISION NOT NULL,
+        height DOUBLE PRECISION NOT NULL,
+        sex VARCHAR NOT NULL,
+        "activityLevelId" INTEGER NOT NULL,
+        CONSTRAINT "FK_users_activity_level"
+          FOREIGN KEY ("activityLevelId")
+          REFERENCES activity_levels(id)
+          ON DELETE RESTRICT
+          ON UPDATE CASCADE
+      );
     `);
 
     await queryRunner.query(`
@@ -79,11 +90,11 @@ export class CreateInitialSchema1710000000000 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      DROP TABLE IF EXISTS activity_levels;
+      DROP TABLE IF EXISTS users;
     `);
 
     await queryRunner.query(`
-      DROP TABLE IF EXISTS users;
+      DROP TABLE IF EXISTS activity_levels;
     `);
   }
 }

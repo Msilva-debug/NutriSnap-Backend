@@ -1,8 +1,9 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { UsersService } from '../user/user.service';
+import { UsersService } from '../user/users.service';
 import { LoginDto } from './dto/login.dto';
-import { JwtPayload } from './jwt-payload.interface';
+import { JwtUserResolver } from './jwt-user.resolver';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { verifyPassword } from './password.utils';
 
 @Injectable()
@@ -10,6 +11,7 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    private readonly jwtUserResolver: JwtUserResolver,
   ) {}
 
   async login(loginDto: LoginDto) {
@@ -41,16 +43,17 @@ export class AuthService {
 
     try {
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
+      const user = await this.jwtUserResolver.resolve(payload);
 
       return {
         valid: true,
-        user: {
-          id: payload.sub,
-          email: payload.email,
-          name: payload.name,
-        },
+        user,
       };
-    } catch {
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+
       throw new UnauthorizedException('Token invalido o expirado');
     }
   }

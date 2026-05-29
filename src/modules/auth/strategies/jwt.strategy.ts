@@ -2,8 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { JwtPayload } from '../jwt-payload.interface';
+import { JwtPayload } from '../interfaces/jwt-payload.interface';
 import { jwtConstants } from '../jwt.constants';
+import { JwtUserResolver } from '../jwt-user.resolver';
 
 function extractJwtFromAuthenticationHeader(request: Request): string | null {
   const authenticationHeader = request.headers.authentication;
@@ -23,7 +24,7 @@ function extractJwtFromAuthenticationHeader(request: Request): string | null {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor() {
+  constructor(private readonly jwtUserResolver: JwtUserResolver) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -35,10 +36,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   validate(payload: JwtPayload) {
-    return {
-      userId: payload.sub,
-      email: payload.email,
-      name: payload.name,
-    };
+    return this.jwtUserResolver.resolve(payload);
   }
 }

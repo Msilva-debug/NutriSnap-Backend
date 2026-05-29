@@ -7,11 +7,18 @@ import {
   Param,
   ParseIntPipe,
   Delete,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { MealService } from './meal.service';
 import { CreateMealDto } from './dto/create-meal.dto';
 import { UpdateMealDto } from './dto/update-meal.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('comidas')
 @Controller('meal')
@@ -26,6 +33,15 @@ export class MealController {
   @Get()
   findAll() {
     return this.mealService.findAll();
+  }
+
+  @Get('today')
+  @ApiOperation({ summary: 'Obtener las comidas del dia de hoy' })
+  @ApiResponse({ status: 200, description: 'Listado de comidas de hoy' })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  findToday() {
+    return this.mealService.findToday();
   }
 
   @Get(':id')

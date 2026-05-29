@@ -10,7 +10,7 @@ export enum ActivityLevelValue {
 
 @Entity('activity_levels')
 export class ActivityLevel {
-  @PrimaryGeneratedColumn('increment', { type: 'bigint' })
+  @PrimaryGeneratedColumn()
   id?: number;
 
   @Column({ type: 'varchar', length: 30, unique: true })

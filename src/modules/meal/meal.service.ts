@@ -43,8 +43,16 @@ export class MealService {
     return this.mealRepository.save(meal);
   }
 
-  findAll() {
-    return `This action returns all meal`;
+  findAll(): Promise<Meal[]> {
+    return this.mealRepository.find();
+  }
+
+  findToday(): Promise<Meal[]> {
+    return this.mealRepository.find({
+      where: {
+        date: this.formatServerDate(new Date()),
+      },
+    });
   }
 
   async findOne(id: number): Promise<Meal> {
