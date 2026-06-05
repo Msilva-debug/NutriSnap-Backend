@@ -7,10 +7,7 @@ async function bootstrap() {
   app.enableCors({
     origin: ['http://localhost:4200', 'http://localhost:5173'],
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization'
-    ],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
   const config = new DocumentBuilder()
     .setTitle('NutriSnap API')
@@ -20,6 +17,7 @@ async function bootstrap() {
     .addTag('autenticacion')
     .addTag('usuarios')
     .addTag('comidas')
+    .addTag('planes nutricionales')
     .addTag('niveles de actividad')
     .build();
 

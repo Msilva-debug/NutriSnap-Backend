@@ -81,6 +81,59 @@ export class CreateInitialSchema1710000000000 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS nutrition_plans (
+        id SERIAL PRIMARY KEY,
+        "userId" INTEGER NOT NULL UNIQUE,
+        goal VARCHAR(40) NOT NULL DEFAULT 'maintain_weight',
+        "basalMetabolicRate" INTEGER NOT NULL,
+        "maintenanceCalories" INTEGER NOT NULL,
+        "dailyCalorieGoal" INTEGER NOT NULL,
+        "proteinGoal" DOUBLE PRECISION NOT NULL,
+        "carbsGoal" DOUBLE PRECISION NOT NULL,
+        "fatsGoal" DOUBLE PRECISION NOT NULL,
+        "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
+        "updatedAt" TIMESTAMP NOT NULL DEFAULT now(),
+        CONSTRAINT "FK_nutrition_plans_user"
+          FOREIGN KEY ("userId")
+          REFERENCES users(id)
+          ON DELETE CASCADE
+          ON UPDATE CASCADE
+      );
+    `);
+
+    await queryRunner.query(`
+      INSERT INTO nutrition_plans (
+        "userId",
+        goal,
+        "basalMetabolicRate",
+        "maintenanceCalories",
+        "dailyCalorieGoal",
+        "proteinGoal",
+        "carbsGoal",
+        "fatsGoal"
+      )
+      VALUES (
+        (SELECT id FROM users WHERE email = 'mateocelis1550@gmail.com'),
+        'maintain_weight',
+        1680,
+        2604,
+        2604,
+        112,
+        377,
+        72
+      )
+      ON CONFLICT ("userId") DO UPDATE SET
+        goal = EXCLUDED.goal,
+        "basalMetabolicRate" = EXCLUDED."basalMetabolicRate",
+        "maintenanceCalories" = EXCLUDED."maintenanceCalories",
+        "dailyCalorieGoal" = EXCLUDED."dailyCalorieGoal",
+        "proteinGoal" = EXCLUDED."proteinGoal",
+        "carbsGoal" = EXCLUDED."carbsGoal",
+        "fatsGoal" = EXCLUDED."fatsGoal",
+        "updatedAt" = now();
+    `);
+
+    await queryRunner.query(`
       DO $$
       BEGIN
         IF NOT EXISTS (
@@ -132,6 +185,10 @@ export class CreateInitialSchema1710000000000 implements MigrationInterface {
 
     await queryRunner.query(`
       DROP TYPE IF EXISTS meals_type_enum;
+    `);
+
+    await queryRunner.query(`
+      DROP TABLE IF EXISTS nutrition_plans;
     `);
 
     await queryRunner.query(`

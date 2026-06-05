@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { MealModule } from './modules/meal/meal.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ActivityLevelModule } from './modules/activity-level/activity-level.module';
+import { NutritionPlanModule } from './modules/nutrition-plan/nutrition-plan.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ActivityLevelModule } from './modules/activity-level/activity-level.mod
     AuthModule,
     MealModule,
     ActivityLevelModule,
+    NutritionPlanModule,
   ],
 })
 export class AppModule {}

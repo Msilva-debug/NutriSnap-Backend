@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { ActivityLevelValue } from '../../activity-level/entities/activity-level.entity';
+import { UserGoal } from '../../nutrition-plan/entities/nutrition-plan.entity';
 
 export class CreateUserDto {
   @ApiProperty({
@@ -55,6 +56,13 @@ export class CreateUserDto {
     description: 'Sexo del usuario',
   })
   sex: string;
+
+  @ApiProperty({
+    enum: UserGoal,
+    example: UserGoal.LOSE_FAT,
+    description: 'Meta principal del usuario',
+  })
+  goal: UserGoal;
 
   @ApiProperty({
     enum: ActivityLevelValue,

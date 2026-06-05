@@ -7,6 +7,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ActivityLevel } from '../activity-level/entities/activity-level.entity';
 import { hashPassword } from '../auth/password.utils';
+import { UserGoal } from '../nutrition-plan/entities/nutrition-plan.entity';
+import { NutritionPlanService } from '../nutrition-plan/nutrition-plan.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
@@ -18,6 +20,7 @@ export class UsersService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(ActivityLevel)
     private readonly activityLevelRepository: Repository<ActivityLevel>,
+    private readonly nutritionPlanService: NutritionPlanService,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
@@ -33,19 +36,31 @@ export class UsersService {
       throw new BadRequestException('Nivel de actividad invalido');
     }
 
+    const age = Number(createUserDto.age);
+    const weight = Number(createUserDto.weight);
+    const height = Number(createUserDto.height);
+    const goal = createUserDto.goal ?? UserGoal.MAINTAIN_WEIGHT;
+
     const user = this.userRepository.create({
       email: createUserDto.email,
       password: hashPassword(createUserDto.password),
       name: createUserDto.name,
       birthdate: createUserDto.birthdate,
-      age: Number(createUserDto.age),
-      weight: Number(createUserDto.weight),
-      height: Number(createUserDto.height),
+      age,
+      weight,
+      height,
       sex: createUserDto.sex,
       activityLevelId: activityLevel.id,
     });
 
-    return this.userRepository.save(user);
+    const savedUser = await this.userRepository.save(user);
+    const nutritionPlan = await this.nutritionPlanService.createOrUpdateForUser(
+      savedUser,
+      createUserDto.activityLevel,
+      goal,
+    );
+
+    return Object.assign(savedUser, { nutritionPlan });
   }
 
   findAll(): Promise<User[]> {
@@ -68,7 +83,7 @@ export class UsersService {
 
   async update(id: number, updateUserDto: UpdateUserDto): Promise<User> {
     const user = await this.findOne(id);
-    const { activityLevel, confirmPassword, password, ...userData } =
+    const { activityLevel, confirmPassword, password, goal, ...userData } =
       updateUserDto;
 
     Object.assign(user, {
@@ -80,6 +95,8 @@ export class UsersService {
         userData.height !== undefined ? Number(userData.height) : user.height,
     });
 
+    let activityLevelValue = activityLevel;
+
     if (activityLevel !== undefined) {
       const activityLevelOption = await this.activityLevelRepository.findOne({
         where: { value: activityLevel },
@@ -90,6 +107,7 @@ export class UsersService {
       }
 
       user.activityLevelId = activityLevelOption.id;
+      activityLevelValue = activityLevelOption.value;
     }
 
     if (password !== undefined) {
@@ -100,7 +118,32 @@ export class UsersService {
       user.password = hashPassword(password);
     }
 
-    return this.userRepository.save(user);
+    const shouldUpdateNutritionPlan =
+      activityLevel !== undefined ||
+      userData.age !== undefined ||
+      userData.weight !== undefined ||
+      userData.height !== undefined ||
+      userData.sex !== undefined ||
+      goal !== undefined;
+
+    const savedUser = await this.userRepository.save(user);
+
+    if (shouldUpdateNutritionPlan) {
+      activityLevelValue =
+        activityLevelValue ??
+        (await this.findActivityLevelValueById(savedUser.activityLevelId));
+
+      const nutritionPlan =
+        await this.nutritionPlanService.createOrUpdateForUser(
+          savedUser,
+          activityLevelValue,
+          goal,
+        );
+
+      return Object.assign(savedUser, { nutritionPlan });
+    }
+
+    return savedUser;
   }
 
   async remove(id: number): Promise<User> {
@@ -119,5 +162,19 @@ export class UsersService {
       .addSelect('user.password')
       .where('user.email = :email', { email })
       .getOne();
+  }
+
+  private async findActivityLevelValueById(
+    activityLevelId: number,
+  ): Promise<ActivityLevel['value']> {
+    const activityLevel = await this.activityLevelRepository.findOne({
+      where: { id: activityLevelId },
+    });
+
+    if (!activityLevel) {
+      throw new BadRequestException('Nivel de actividad invalido');
+    }
+
+    return activityLevel.value;
   }
 }
