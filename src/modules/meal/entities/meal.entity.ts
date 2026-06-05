@@ -1,4 +1,11 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { User } from '../../user/entities/user.entity';
 
 export enum MealType {
   BREAKFAST = 'breakfast',
@@ -26,6 +33,17 @@ export class Meal {
 
   @Column({ type: 'enum', enum: MealType })
   type: MealType;
+
+  @Column({ type: 'int' })
+  userId: number;
+
+  @ManyToOne(() => User, {
+    nullable: false,
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'userId', referencedColumnName: 'id' })
+  user: User;
 
   @Column({ type: 'float', nullable: true })
   proteins?: number;

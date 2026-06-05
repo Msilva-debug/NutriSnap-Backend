@@ -47,6 +47,40 @@ export class CreateInitialSchema1710000000000 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
+      INSERT INTO users (
+        name,
+        email,
+        password,
+        birthdate,
+        age,
+        weight,
+        height,
+        sex,
+        "activityLevelId"
+      )
+      VALUES (
+        'Mateo Celis',
+        'mateocelis1550@gmail.com',
+        'dd14f72ec28814871eaafafd28444f7e:3b95c0d0cfa1aafe16b4ea220dc93a4b4d7fd7d6aa30b80fc70b9dfa60cd8ce74471ef56febd7c66a2ccb5596ede0b324b42efd7c84fd56bd63ce064f8dc45ba',
+        '2000-01-01',
+        24,
+        70,
+        175,
+        'masculino',
+        (SELECT id FROM activity_levels WHERE value = 'moderate')
+      )
+      ON CONFLICT (email) DO UPDATE SET
+        name = EXCLUDED.name,
+        password = EXCLUDED.password,
+        birthdate = EXCLUDED.birthdate,
+        age = EXCLUDED.age,
+        weight = EXCLUDED.weight,
+        height = EXCLUDED.height,
+        sex = EXCLUDED.sex,
+        "activityLevelId" = EXCLUDED."activityLevelId";
+    `);
+
+    await queryRunner.query(`
       DO $$
       BEGIN
         IF NOT EXISTS (
@@ -73,10 +107,21 @@ export class CreateInitialSchema1710000000000 implements MigrationInterface {
         time TIME NOT NULL,
         date DATE NOT NULL,
         type meals_type_enum NOT NULL,
+        "userId" INTEGER NOT NULL,
         proteins DOUBLE PRECISION,
         carbs DOUBLE PRECISION,
-        fats DOUBLE PRECISION
+        fats DOUBLE PRECISION,
+        CONSTRAINT "FK_meals_user"
+          FOREIGN KEY ("userId")
+          REFERENCES users(id)
+          ON DELETE CASCADE
+          ON UPDATE CASCADE
       );
+    `);
+
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS "IDX_meals_user_date"
+      ON meals ("userId", date);
     `);
   }
 

@@ -16,7 +16,7 @@ export class MealService {
     private readonly mealRepository: Repository<Meal>,
   ) {}
 
-  async create(createMealDto: CreateMealDto): Promise<Meal> {
+  async create(createMealDto: CreateMealDto, userId: number): Promise<Meal> {
     this.validateMealType(createMealDto.type);
     const now = new Date();
 
@@ -26,6 +26,7 @@ export class MealService {
       time: this.formatServerTime(now),
       date: this.formatServerDate(now),
       type: createMealDto.type,
+      userId,
       proteins:
         createMealDto.proteins !== undefined
           ? Number(createMealDto.proteins)
@@ -43,20 +44,23 @@ export class MealService {
     return this.mealRepository.save(meal);
   }
 
-  findAll(): Promise<Meal[]> {
-    return this.mealRepository.find();
+  findAll(userId: number): Promise<Meal[]> {
+    return this.mealRepository.find({
+      where: { userId },
+    });
   }
 
-  findToday(): Promise<Meal[]> {
+  findToday(userId: number): Promise<Meal[]> {
     return this.mealRepository.find({
       where: {
+        userId,
         date: this.formatServerDate(new Date()),
       },
     });
   }
 
-  async findOne(id: number): Promise<Meal> {
-    const meal = await this.mealRepository.findOne({ where: { id } });
+  async findOne(id: number, userId: number): Promise<Meal> {
+    const meal = await this.mealRepository.findOne({ where: { id, userId } });
 
     if (!meal) {
       throw new NotFoundException(`Comida #${id} no encontrada`);
@@ -65,8 +69,12 @@ export class MealService {
     return meal;
   }
 
-  async update(id: number, updateMealDto: UpdateMealDto): Promise<Meal> {
-    const meal = await this.findOne(id);
+  async update(
+    id: number,
+    updateMealDto: UpdateMealDto,
+    userId: number,
+  ): Promise<Meal> {
+    const meal = await this.findOne(id, userId);
 
     if (updateMealDto.type !== undefined) {
       this.validateMealType(updateMealDto.type);
@@ -96,8 +104,8 @@ export class MealService {
     return this.mealRepository.save(updatedMeal);
   }
 
-  async remove(id: number): Promise<Meal> {
-    const meal = await this.findOne(id);
+  async remove(id: number, userId: number): Promise<Meal> {
+    const meal = await this.findOne(id, userId);
 
     return this.mealRepository.remove(meal);
   }
