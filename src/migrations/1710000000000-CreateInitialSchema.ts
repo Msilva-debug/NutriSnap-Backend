@@ -61,7 +61,7 @@ export class CreateInitialSchema1710000000000 implements MigrationInterface {
       VALUES (
         'Mateo Celis',
         'mateocelis1550@gmail.com',
-        'dd14f72ec28814871eaafafd28444f7e:3b95c0d0cfa1aafe16b4ea220dc93a4b4d7fd7d6aa30b80fc70b9dfa60cd8ce74471ef56febd7c66a2ccb5596ede0b324b42efd7c84fd56bd63ce064f8dc45ba',
+        '$2b$12$4rflimhwfTsyD7YBxDXMNu8khTpimX5r6SGyPm3vQEyMJmCqcDHg2',
         '2000-01-01',
         24,
         70,

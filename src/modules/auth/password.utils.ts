@@ -1,15 +1,29 @@
-import { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
+import * as bcrypt from 'bcrypt';
+import { scryptSync, timingSafeEqual } from 'crypto';
 
-const keyLength = 64;
+const bcryptSaltRounds = 12;
+const legacyScryptKeyLength = 64;
 
 export function hashPassword(password: string): string {
-  const salt = randomBytes(16).toString('hex');
-  const hash = scryptSync(password, salt, keyLength).toString('hex');
-
-  return `${salt}:${hash}`;
+  return bcrypt.hashSync(password, bcryptSaltRounds);
 }
 
 export function verifyPassword(
+  password: string,
+  storedPassword: string,
+): boolean {
+  if (storedPassword.startsWith('$2')) {
+    try {
+      return bcrypt.compareSync(password, storedPassword);
+    } catch {
+      return false;
+    }
+  }
+
+  return verifyLegacyScryptPassword(password, storedPassword);
+}
+
+function verifyLegacyScryptPassword(
   password: string,
   storedPassword: string,
 ): boolean {
@@ -20,7 +34,7 @@ export function verifyPassword(
   }
 
   const hashBuffer = Buffer.from(storedHash, 'hex');
-  const suppliedHashBuffer = scryptSync(password, salt, keyLength);
+  const suppliedHashBuffer = scryptSync(password, salt, legacyScryptKeyLength);
 
   return (
     hashBuffer.length === suppliedHashBuffer.length &&
