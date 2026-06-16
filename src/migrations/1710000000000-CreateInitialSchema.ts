@@ -37,6 +37,8 @@ export class CreateInitialSchema1710000000000 implements MigrationInterface {
         weight DOUBLE PRECISION NOT NULL,
         height DOUBLE PRECISION NOT NULL,
         sex VARCHAR NOT NULL,
+        "primaryColor" VARCHAR(20) NOT NULL DEFAULT '#6d28d9',
+        "secondaryColor" VARCHAR(20) NOT NULL DEFAULT '#ecfeff',
         "activityLevelId" INTEGER NOT NULL,
         CONSTRAINT "FK_users_activity_level"
           FOREIGN KEY ("activityLevelId")
@@ -56,6 +58,8 @@ export class CreateInitialSchema1710000000000 implements MigrationInterface {
         weight,
         height,
         sex,
+        "primaryColor",
+        "secondaryColor",
         "activityLevelId"
       )
       VALUES (
@@ -67,6 +71,8 @@ export class CreateInitialSchema1710000000000 implements MigrationInterface {
         70,
         175,
         'masculino',
+        '#6d28d9',
+        '#ecfeff',
         (SELECT id FROM activity_levels WHERE value = 'moderate')
       )
       ON CONFLICT (email) DO UPDATE SET
@@ -77,6 +83,8 @@ export class CreateInitialSchema1710000000000 implements MigrationInterface {
         weight = EXCLUDED.weight,
         height = EXCLUDED.height,
         sex = EXCLUDED.sex,
+        "primaryColor" = EXCLUDED."primaryColor",
+        "secondaryColor" = EXCLUDED."secondaryColor",
         "activityLevelId" = EXCLUDED."activityLevelId";
     `);
 

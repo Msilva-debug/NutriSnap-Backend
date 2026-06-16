@@ -10,6 +10,7 @@ async function bootstrap() {
       'http://127.0.0.1:4200',
       'http://localhost:5173',
       'http://127.0.0.1:5173',
+      'https://f006-161-18-228-190.ngrok-free.app',
     ],
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

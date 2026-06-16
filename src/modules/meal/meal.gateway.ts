@@ -20,6 +20,7 @@ import { Meal } from './entities/meal.entity';
       'http://127.0.0.1:4200',
       'http://localhost:5173',
       'http://127.0.0.1:5173',
+      'https://f006-161-18-228-190.ngrok-free.app',
     ],
     credentials: true,
   },

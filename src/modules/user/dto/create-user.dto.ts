@@ -70,4 +70,16 @@ export class CreateUserDto {
     description: 'Nivel de actividad del usuario',
   })
   activityLevel: ActivityLevelValue;
+
+  @ApiProperty({
+    example: '#6d28d9',
+    description: 'Color primario del tema del usuario',
+  })
+  primaryColor: string;
+
+  @ApiProperty({
+    example: '#ecfeff',
+    description: 'Color secundario del tema del usuario',
+  })
+  secondaryColor: string;
 }

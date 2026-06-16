@@ -36,6 +36,12 @@ export class User {
   @Column()
   sex: string;
 
+  @Column({ default: '#6d28d9' })
+  primaryColor: string;
+
+  @Column({ default: '#ecfeff' })
+  secondaryColor: string;
+
   @Column({ type: 'int' })
   activityLevelId: number;
 

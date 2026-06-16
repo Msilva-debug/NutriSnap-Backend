@@ -18,6 +18,7 @@ describe('UsersService', () => {
 
   const userRepository = {
     create: jest.fn(),
+    findOne: jest.fn(),
     save: jest.fn(),
   };
   const activityLevelRepository = {
@@ -142,6 +143,8 @@ describe('UsersService', () => {
         sex: 'masculino',
         goal,
         activityLevel: ActivityLevelValue.MODERATE,
+        primaryColor: '#6d28d9',
+        secondaryColor: '#ecfeff',
       };
       const activityLevel = {
         id: 3,
@@ -151,6 +154,7 @@ describe('UsersService', () => {
       };
 
       activityLevelRepository.findOne.mockResolvedValue(activityLevel);
+      userRepository.findOne.mockResolvedValue(null);
       userRepository.create.mockImplementation((user) => user);
       userRepository.save.mockImplementation((user) =>
         Promise.resolve({
@@ -177,6 +181,8 @@ describe('UsersService', () => {
           weight: createUserDto.weight,
           height: createUserDto.height,
           sex: createUserDto.sex,
+          primaryColor: createUserDto.primaryColor,
+          secondaryColor: createUserDto.secondaryColor,
           activityLevelId: activityLevel.id,
         }),
       );
@@ -206,4 +212,29 @@ describe('UsersService', () => {
       );
     },
   );
+
+  it('returns a success message when the email is available', async () => {
+    userRepository.findOne.mockResolvedValue(null);
+
+    await expect(
+      usersService.validateEmail('nuevo@example.com'),
+    ).resolves.toEqual({
+      message: 'Correo electronico disponible',
+    });
+
+    expect(userRepository.findOne).toHaveBeenCalledWith({
+      where: { email: 'nuevo@example.com' },
+    });
+  });
+
+  it('throws a bad request when the email is already registered', async () => {
+    userRepository.findOne.mockResolvedValue({
+      id: 1,
+      email: 'registrado@example.com',
+    });
+
+    await expect(
+      usersService.validateEmail('registrado@example.com'),
+    ).rejects.toThrow('El correo electronico ya esta registrado');
+  });
 });

@@ -1,5 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Query,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -15,6 +23,21 @@ export class UsersController {
   @ApiResponse({ status: 400, description: 'Cuerpo de solicitud invalido' })
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
+  }
+
+  @Get('exists-email')
+  @ApiOperation({
+    summary: 'Validar si un correo electronico ya esta registrado',
+  })
+  @ApiQuery({
+    name: 'email',
+    example: 'john@example.com',
+    description: 'Correo electronico a validar',
+  })
+  @ApiResponse({ status: 200, description: 'Correo electronico disponible' })
+  @ApiResponse({ status: 400, description: 'Correo electronico ya registrado' })
+  validarCorreo(@Query('email') email: string) {
+    return this.usersService.validateEmail(email);
   }
 
   // @Get()

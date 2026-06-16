@@ -28,6 +28,8 @@ export class UsersService {
       throw new BadRequestException('Las contrasenas no coinciden');
     }
 
+    await this.validateEmail(createUserDto.email);
+
     const activityLevel = await this.activityLevelRepository.findOne({
       where: { value: createUserDto.activityLevel },
     });
@@ -50,6 +52,8 @@ export class UsersService {
       weight,
       height,
       sex: createUserDto.sex,
+      primaryColor: createUserDto.primaryColor,
+      secondaryColor: createUserDto.secondaryColor,
       activityLevelId: activityLevel.id,
     });
 
@@ -162,6 +166,24 @@ export class UsersService {
       .addSelect('user.password')
       .where('user.email = :email', { email })
       .getOne();
+  }
+
+  async validateEmail(email: string): Promise<{ message: string }> {
+    if (!email?.trim()) {
+      throw new BadRequestException('El correo electronico es requerido');
+    }
+
+    const existingUser = await this.userRepository.findOne({
+      where: { email: email.trim() },
+    });
+
+    if (existingUser) {
+      throw new BadRequestException('El correo electronico ya esta registrado');
+    }
+
+    return {
+      message: 'Correo electronico disponible',
+    };
   }
 
   private async findActivityLevelValueById(
