@@ -5,6 +5,7 @@ import { LoginDto } from './dto/login.dto';
 import { JwtUserResolver } from './jwt-user.resolver';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { verifyPassword } from './password.utils';
+import { User } from '../user/entities/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -31,6 +32,7 @@ export class AuthService {
 
     return {
       access_token: await this.jwtService.signAsync(payload),
+      user: this.buildAuthenticatedUser(user),
     };
   }
 
@@ -70,5 +72,12 @@ export class AuthService {
     }
 
     return authenticationHeader;
+  }
+
+  private buildAuthenticatedUser(user: User) {
+    return {
+      primaryColor: user.primaryColor,
+      secondaryColor: user.secondaryColor,
+    };
   }
 }

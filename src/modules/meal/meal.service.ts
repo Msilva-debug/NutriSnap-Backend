@@ -65,6 +65,17 @@ export class MealService {
     });
   }
 
+  findByDate(userId: number, date: string): Promise<Meal[]> {
+    const formattedDate = this.validateHistoryDate(date);
+
+    return this.mealRepository.find({
+      where: {
+        userId,
+        date: formattedDate,
+      },
+    });
+  }
+
   async findOne(id: number, userId: number): Promise<Meal> {
     const meal = await this.mealRepository.findOne({ where: { id, userId } });
 
@@ -120,6 +131,29 @@ export class MealService {
     if (!Object.values(MealType).includes(type)) {
       throw new BadRequestException('El tipo de comida es invalido');
     }
+  }
+
+  private validateHistoryDate(date: string): string {
+    if (!date?.trim()) {
+      throw new BadRequestException('La fecha es requerida');
+    }
+
+    const formattedDate = date.trim();
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(formattedDate)) {
+      throw new BadRequestException('La fecha debe tener formato YYYY-MM-DD');
+    }
+
+    const parsedDate = new Date(`${formattedDate}T00:00:00.000Z`);
+
+    if (
+      Number.isNaN(parsedDate.getTime()) ||
+      parsedDate.toISOString().slice(0, 10) !== formattedDate
+    ) {
+      throw new BadRequestException('La fecha es invalida');
+    }
+
+    return formattedDate;
   }
 
   private formatServerTime(date: Date): string {

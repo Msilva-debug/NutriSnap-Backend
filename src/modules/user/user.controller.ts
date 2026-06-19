@@ -6,11 +6,25 @@ import {
   Patch,
   Param,
   Query,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiQuery,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
+import { Request } from 'express';
+import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserThemeColorsDto } from './dto/update-user-theme-colors.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+
+type AuthenticatedRequest = Request & { user: AuthenticatedUser };
 
 @ApiTags('usuarios')
 @Controller('users')
@@ -38,6 +52,27 @@ export class UsersController {
   @ApiResponse({ status: 400, description: 'Correo electronico ya registrado' })
   validarCorreo(@Query('email') email: string) {
     return this.usersService.validateEmail(email);
+  }
+
+  @Patch('theme-colors')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Actualizar los colores del tema del usuario autenticado',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Colores del usuario actualizados correctamente',
+  })
+  @ApiResponse({ status: 401, description: 'Token invalido o no enviado' })
+  updateThemeColors(
+    @Body() updateUserThemeColorsDto: UpdateUserThemeColorsDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.usersService.updateThemeColors(
+      request.user.id,
+      updateUserThemeColorsDto,
+    );
   }
 
   // @Get()

@@ -237,4 +237,52 @@ describe('UsersService', () => {
       usersService.validateEmail('registrado@example.com'),
     ).rejects.toThrow('El correo electronico ya esta registrado');
   });
+
+  it('updates the authenticated user theme colors', async () => {
+    const user = {
+      id: 1,
+      email: 'theme@example.com',
+      primaryColor: '#6d28d9',
+      secondaryColor: '#ecfeff',
+    };
+
+    userRepository.findOne.mockResolvedValue(user);
+    userRepository.save.mockImplementation((updatedUser) =>
+      Promise.resolve(updatedUser),
+    );
+
+    await expect(
+      usersService.updateThemeColors(1, {
+        primaryColor: '#ABC',
+        secondaryColor: '123456',
+      }),
+    ).resolves.toEqual({
+      id: 1,
+      primaryColor: '#aabbcc',
+      secondaryColor: '#123456',
+    });
+
+    expect(userRepository.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
+    expect(userRepository.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        primaryColor: '#aabbcc',
+        secondaryColor: '#123456',
+      }),
+    );
+  });
+
+  it('rejects invalid theme colors', async () => {
+    userRepository.findOne.mockResolvedValue({
+      id: 1,
+      primaryColor: '#6d28d9',
+      secondaryColor: '#ecfeff',
+    });
+
+    await expect(
+      usersService.updateThemeColors(1, {
+        primaryColor: 'not-a-color',
+        secondaryColor: '#ecfeff',
+      }),
+    ).rejects.toThrow('primaryColor debe ser un color hexadecimal');
+  });
 });

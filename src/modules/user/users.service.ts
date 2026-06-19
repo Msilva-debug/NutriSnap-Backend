@@ -10,6 +10,7 @@ import { hashPassword } from '../auth/password.utils';
 import { UserGoal } from '../nutrition-plan/entities/nutrition-plan.entity';
 import { NutritionPlanService } from '../nutrition-plan/nutrition-plan.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserThemeColorsDto } from './dto/update-user-theme-colors.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 
@@ -156,6 +157,30 @@ export class UsersService {
     return this.userRepository.remove(user);
   }
 
+  async updateThemeColors(
+    userId: number,
+    updateUserThemeColorsDto: UpdateUserThemeColorsDto,
+  ): Promise<Pick<User, 'id' | 'primaryColor' | 'secondaryColor'>> {
+    const user = await this.findOne(userId);
+
+    user.primaryColor = this.normalizeHexColor(
+      updateUserThemeColorsDto.primaryColor,
+      'primaryColor',
+    );
+    user.secondaryColor = this.normalizeHexColor(
+      updateUserThemeColorsDto.secondaryColor,
+      'secondaryColor',
+    );
+
+    const savedUser = await this.userRepository.save(user);
+
+    return {
+      id: savedUser.id,
+      primaryColor: savedUser.primaryColor,
+      secondaryColor: savedUser.secondaryColor,
+    };
+  }
+
   findById(id: number): Promise<User | null> {
     return this.userRepository.findOne({ where: { id } });
   }
@@ -198,5 +223,27 @@ export class UsersService {
     }
 
     return activityLevel.value;
+  }
+
+  private normalizeHexColor(value: string, fieldName: string): string {
+    if (typeof value !== 'string') {
+      throw new BadRequestException(
+        `${fieldName} debe ser un color hexadecimal`,
+      );
+    }
+
+    const sanitizedValue = value.trim().replace(/^#/, '');
+
+    if (/^[\da-f]{3}$/i.test(sanitizedValue)) {
+      const [red, green, blue] = sanitizedValue;
+
+      return `#${red}${red}${green}${green}${blue}${blue}`.toLowerCase();
+    }
+
+    if (/^[\da-f]{6}$/i.test(sanitizedValue)) {
+      return `#${sanitizedValue}`.toLowerCase();
+    }
+
+    throw new BadRequestException(`${fieldName} debe ser un color hexadecimal`);
   }
 }

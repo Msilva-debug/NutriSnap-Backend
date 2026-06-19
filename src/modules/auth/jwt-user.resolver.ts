@@ -18,6 +18,8 @@ export class JwtUserResolver {
       id: user.id,
       email: user.email,
       name: user.name,
+      primaryColor: user.primaryColor,
+      secondaryColor: user.secondaryColor,
     };
   }
 }

@@ -9,6 +9,7 @@ import {
   Delete,
   UseGuards,
   Req,
+  Query,
 } from '@nestjs/common';
 import { Request } from 'express';
 import {
@@ -16,6 +17,7 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { MealService } from './meal.service';
 import { CreateMealDto } from './dto/create-meal.dto';
@@ -50,6 +52,22 @@ export class MealController {
   @ApiResponse({ status: 200, description: 'Listado de comidas de hoy' })
   findToday(@Req() request: AuthenticatedRequest) {
     return this.mealService.findToday(request.user.id);
+  }
+
+  @Get('history')
+  @ApiOperation({ summary: 'Obtener comidas de una fecha especifica' })
+  @ApiQuery({
+    name: 'date',
+    example: '2026-06-17',
+    description: 'Fecha a consultar en formato YYYY-MM-DD',
+  })
+  @ApiResponse({ status: 200, description: 'Listado de comidas de la fecha' })
+  @ApiResponse({ status: 400, description: 'Fecha invalida' })
+  findHistory(
+    @Query('date') date: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.mealService.findByDate(request.user.id, date);
   }
 
   @Get(':id')
