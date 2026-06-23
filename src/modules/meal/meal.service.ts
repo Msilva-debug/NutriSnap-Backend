@@ -4,17 +4,28 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CreateMealDto } from './dto/create-meal.dto';
+import { SaveMealHistoryNoteDto } from './dto/save-meal-history-note.dto';
 import { UpdateMealDto } from './dto/update-meal.dto';
+import { DailyFoodNote } from './entities/daily-food-note.entity';
 import { Meal, MealType } from './entities/meal.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MealGateway } from './meal.gateway';
+
+export interface MealHistoryResponse {
+  date: string;
+  meals: Meal[];
+  note: string;
+  noteId: number | null;
+}
 
 @Injectable()
 export class MealService {
   constructor(
     @InjectRepository(Meal)
     private readonly mealRepository: Repository<Meal>,
+    @InjectRepository(DailyFoodNote)
+    private readonly dailyFoodNoteRepository: Repository<DailyFoodNote>,
     private readonly mealGateway: MealGateway,
   ) {}
 
@@ -65,15 +76,35 @@ export class MealService {
     });
   }
 
-  findByDate(userId: number, date: string): Promise<Meal[]> {
+  async findByDate(
+    userId: number,
+    date: string,
+  ): Promise<MealHistoryResponse> {
     const formattedDate = this.validateHistoryDate(date);
+    const [meals, dailyFoodNote] = await Promise.all([
+      this.mealRepository.find({
+        where: {
+          userId,
+          date: formattedDate,
+        },
+        order: {
+          time: 'ASC',
+        },
+      }),
+      this.dailyFoodNoteRepository.findOne({
+        where: {
+          userId,
+          date: formattedDate,
+        },
+      }),
+    ]);
 
-    return this.mealRepository.find({
-      where: {
-        userId,
-        date: formattedDate,
-      },
-    });
+    return {
+      date: formattedDate,
+      meals,
+      note: dailyFoodNote?.note ?? '',
+      noteId: dailyFoodNote?.id ?? null,
+    };
   }
 
   async findOne(id: number, userId: number): Promise<Meal> {
@@ -127,6 +158,30 @@ export class MealService {
     return this.mealRepository.remove(meal);
   }
 
+  async saveHistoryNote(
+    userId: number,
+    saveMealHistoryNoteDto: SaveMealHistoryNoteDto,
+  ): Promise<DailyFoodNote> {
+    const date = this.validateHistoryDate(saveMealHistoryNoteDto.date);
+    const note = this.validateHistoryNote(saveMealHistoryNoteDto.note);
+    const existingNote = await this.dailyFoodNoteRepository.findOne({
+      where: {
+        userId,
+        date,
+      },
+    });
+
+    const dailyFoodNote = existingNote
+      ? this.dailyFoodNoteRepository.merge(existingNote, { note })
+      : this.dailyFoodNoteRepository.create({
+          userId,
+          date,
+          note,
+        });
+
+    return this.dailyFoodNoteRepository.save(dailyFoodNote);
+  }
+
   private validateMealType(type: MealType): void {
     if (!Object.values(MealType).includes(type)) {
       throw new BadRequestException('El tipo de comida es invalido');
@@ -154,6 +209,18 @@ export class MealService {
     }
 
     return formattedDate;
+  }
+
+  private validateHistoryNote(note: string): string {
+    if (typeof note !== 'string') {
+      throw new BadRequestException('La nota debe ser texto');
+    }
+
+    if (note.length > 5000) {
+      throw new BadRequestException('La nota no puede superar 5000 caracteres');
+    }
+
+    return note.trim();
   }
 
   private formatServerTime(date: Date): string {

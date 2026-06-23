@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -21,9 +22,11 @@ import {
 } from '@nestjs/swagger';
 import { MealService } from './meal.service';
 import { CreateMealDto } from './dto/create-meal.dto';
+import { SaveMealHistoryNoteDto } from './dto/save-meal-history-note.dto';
 import { UpdateMealDto } from './dto/update-meal.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { MonthlyFoodSummaryService } from './monthly-food-summary.service';
 
 type AuthenticatedRequest = Request & { user: AuthenticatedUser };
 
@@ -32,7 +35,10 @@ type AuthenticatedRequest = Request & { user: AuthenticatedUser };
 @ApiBearerAuth()
 @Controller('meal')
 export class MealController {
-  constructor(private readonly mealService: MealService) {}
+  constructor(
+    private readonly mealService: MealService,
+    private readonly monthlyFoodSummaryService: MonthlyFoodSummaryService,
+  ) {}
 
   @Post()
   create(
@@ -55,19 +61,60 @@ export class MealController {
   }
 
   @Get('history')
-  @ApiOperation({ summary: 'Obtener comidas de una fecha especifica' })
+  @ApiOperation({ summary: 'Obtener comidas y nota de una fecha especifica' })
   @ApiQuery({
     name: 'date',
     example: '2026-06-17',
     description: 'Fecha a consultar en formato YYYY-MM-DD',
   })
-  @ApiResponse({ status: 200, description: 'Listado de comidas de la fecha' })
+  @ApiResponse({
+    status: 200,
+    description: 'Listado de comidas y nota diaria de la fecha',
+  })
   @ApiResponse({ status: 400, description: 'Fecha invalida' })
   findHistory(
     @Query('date') date: string,
     @Req() request: AuthenticatedRequest,
   ) {
     return this.mealService.findByDate(request.user.id, date);
+  }
+
+  @Patch('history/note')
+  @ApiOperation({ summary: 'Guardar la nota de comidas de una fecha' })
+  @ApiResponse({ status: 200, description: 'Nota guardada correctamente' })
+  @ApiResponse({ status: 400, description: 'Fecha o nota invalida' })
+  saveHistoryNote(
+    @Body() saveMealHistoryNoteDto: SaveMealHistoryNoteDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.mealService.saveHistoryNote(
+      request.user.id,
+      saveMealHistoryNoteDto,
+    );
+  }
+
+  @Post('monthly-summary/generate')
+  @ApiOperation({
+    summary:
+      'Generar manualmente el resumen mensual de comidas del usuario autenticado',
+  })
+  @ApiQuery({
+    name: 'referenceDate',
+    required: false,
+    example: '2026-07-01',
+    description:
+      'Fecha de referencia en formato YYYY-MM-DD. Se procesa el mes anterior a esta fecha.',
+  })
+  @ApiResponse({ status: 201, description: 'Resumen mensual generado' })
+  @ApiResponse({ status: 400, description: 'Fecha de referencia invalida' })
+  generateMonthlySummary(
+    @Query('referenceDate') referenceDate: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.monthlyFoodSummaryService.generatePreviousMonthSummaryForUser(
+      request.user.id,
+      this.parseReferenceDate(referenceDate),
+    );
   }
 
   @Get(':id')
@@ -102,5 +149,36 @@ export class MealController {
     @Req() request: AuthenticatedRequest,
   ) {
     return this.mealService.remove(id, request.user.id);
+  }
+
+  private parseReferenceDate(referenceDate?: string): Date {
+    if (!referenceDate?.trim()) {
+      return new Date();
+    }
+
+    const formattedDate = referenceDate.trim();
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(formattedDate);
+
+    if (!match) {
+      throw new BadRequestException(
+        'La fecha de referencia debe tener formato YYYY-MM-DD',
+      );
+    }
+
+    const [, yearValue, monthValue, dayValue] = match;
+    const year = Number(yearValue);
+    const month = Number(monthValue);
+    const day = Number(dayValue);
+    const parsedDate = new Date(year, month - 1, day, 12);
+
+    if (
+      parsedDate.getFullYear() !== year ||
+      parsedDate.getMonth() !== month - 1 ||
+      parsedDate.getDate() !== day
+    ) {
+      throw new BadRequestException('La fecha de referencia es invalida');
+    }
+
+    return parsedDate;
   }
 }
