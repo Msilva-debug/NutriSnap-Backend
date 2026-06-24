@@ -7,6 +7,7 @@ import { MonthlyFoodSummary } from './entities/monthly-food-summary.entity';
 import { MealGateway } from './meal.gateway';
 import { MealService } from './meal.service';
 import { MealController } from './meal.controller';
+import { MealImageAnalysisService } from './meal-image-analysis.service';
 import { MonthlyFoodSummaryCron } from './monthly-food-summary.cron';
 import { MonthlyFoodSummaryService } from './monthly-food-summary.service';
 
@@ -19,6 +20,7 @@ import { MonthlyFoodSummaryService } from './monthly-food-summary.service';
   providers: [
     MealService,
     MealGateway,
+    MealImageAnalysisService,
     MonthlyFoodSummaryService,
     MonthlyFoodSummaryCron,
   ],

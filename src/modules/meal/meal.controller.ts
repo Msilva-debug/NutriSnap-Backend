@@ -11,7 +11,13 @@ import {
   UseGuards,
   Req,
   Query,
+  UploadedFile,
+  UseInterceptors,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
 import {
   ApiTags,
@@ -19,6 +25,8 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiQuery,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
 import { MealService } from './meal.service';
 import { CreateMealDto } from './dto/create-meal.dto';
@@ -27,6 +35,8 @@ import { UpdateMealDto } from './dto/update-meal.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { MonthlyFoodSummaryService } from './monthly-food-summary.service';
+import { MealImageAnalysisService } from './meal-image-analysis.service';
+import type { UploadedMealImage } from './meal-image-analysis.service';
 
 type AuthenticatedRequest = Request & { user: AuthenticatedUser };
 
@@ -38,6 +48,7 @@ export class MealController {
   constructor(
     private readonly mealService: MealService,
     private readonly monthlyFoodSummaryService: MonthlyFoodSummaryService,
+    private readonly mealImageAnalysisService: MealImageAnalysisService,
   ) {}
 
   @Post()
@@ -115,6 +126,45 @@ export class MealController {
       request.user.id,
       this.parseReferenceDate(referenceDate),
     );
+  }
+
+  @Post('analyze-image')
+  @UseInterceptors(
+    FileInterceptor('image', {
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
+  @ApiOperation({
+    summary: 'Analizar una foto de comida y estimar sus nutrientes con IA',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        image: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+      required: ['image'],
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Analisis generado correctamente' })
+  @ApiResponse({ status: 400, description: 'Imagen invalida' })
+  analyzeImage(
+    @UploadedFile(
+      new ParseFilePipe({
+        fileIsRequired: true,
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({ fileType: /^image\/(jpeg|png|webp)$/ }),
+        ],
+      }),
+    )
+    image: UploadedMealImage,
+  ) {
+    return this.mealImageAnalysisService.analyze(image);
   }
 
   @Get(':id')
