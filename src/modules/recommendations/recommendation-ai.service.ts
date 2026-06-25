@@ -93,57 +93,69 @@ export class RecommendationAiService {
     sourceText: string,
   ): Record<string, unknown> {
     const totals = this.calculateTotals(input);
+    const userNotesContext = this.buildUserNotesContext(input);
+    const userMealsContext = this.buildUserMealsContext(input);
 
     return {
       contents: [
         {
           parts: [
             {
-              text: `Actua como un asistente nutricional para NutriSnap.
+              text: `
+              Actua como un asistente nutricional para NutriSnap.
 
-Genera recomendaciones utiles, claras y accionables sobre la vida alimenticia de una persona a partir de sus registros de alimentacion.
-No des diagnosticos medicos. No inventes datos que no esten en el contexto.
-El campo "summary" debe ser un resumen cualitativo nuevo del periodo, no copies literalmente las notas ni el resumen base.
+              Genera recomendaciones utiles, claras y accionables sobre la vida alimenticia de una persona a partir de sus registros de alimentacion.
+              No des diagnosticos medicos. No inventes datos que no esten en el contexto.
+              El campo "summary" debe ser un resumen cualitativo nuevo del periodo, no copies literalmente las notas ni el resumen base.
 
-Devuelve un JSON valido con este formato exacto:
-{
-  "summary": "Resumen cualitativo corto del periodo analizado",
-  "recommendations": [
-    {
-      "category": "Categoria corta",
-      "title": "Titulo corto",
-      "description": "Recomendacion clara y concreta"
-    }
-  ]
-}
+              Devuelve un JSON valido con este formato exacto:
+              {
+                "summary": "Resumen cualitativo corto del periodo analizado",
+                "recommendations": [
+                  {
+                    "category": "Categoria corta",
+                    "title": "Titulo corto",
+                    "description": "Recomendacion clara y concreta"
+                  }
+                ]
+              }
 
-Reglas:
-- Genera entre 3 y 5 recomendaciones.
-- Usa lenguaje simple, cercano y motivador.
-- No recomiendes "registrar mas comidas", "usar la app" ni acciones administrativas. Recomienda cambios alimenticios reales.
-- Prioriza calidad de alimentos, balance de plato, saciedad, proteinas, fibra, hidratacion, snacks, variedad, porciones y distribucion de comidas.
-- Si detectas un problema, explica que cambiar y por que, con una alternativa concreta.
-- Da sugerencias realistas para una persona comun: opciones faciles de comprar, cocinar o preparar.
-- Recomienda snacks cuando ayuden al patron observado, por ejemplo yogur griego con fruta, huevos cocidos, queso campesino, frutos secos medidos, fruta con mantequilla de mani, hummus con verduras, atun con galletas integrales o batido con proteina.
-- Si hay exceso de arroz, harinas o carbohidratos y poca proteina, sugiere reducir una parte del carbohidrato y agregar proteina como pollo, huevos, atun, carne magra, yogur griego, lentejas, frijoles, garbanzos o tofu.
-- Si la dieta se ve repetitiva, sugiere variantes concretas del mismo plato: cambiar arroz blanco por papa, yuca moderada, quinoa, arroz integral o mas verduras; alternar sancocho con ensalada con proteina, bowl balanceado o sopa con legumbres.
-- Si faltan verduras o fibra, recomienda agregar ensalada, verduras salteadas, aguacate medido, frutas enteras, legumbres o semillas.
-- Si las grasas son altas, sugiere ajustes concretos como moderar aceites, fritos, salsas o porciones de aguacate, sin eliminar alimentos completos.
-- Si las calorias se concentran en una comida, sugiere repartir la energia con desayuno, cena ligera o snacks proteicos.
-- Cada description debe ser corta, util, accionable y mencionar una comida, snack o cambio especifico cuando aplique.
-- Responde solo JSON, sin markdown.
+              Reglas:
+              - Genera entre 3 y 5 recomendaciones.
+              - Usa lenguaje simple, cercano y motivador.
+              - Usa las "Notas del usuario" como contexto prioritario para entender habitos, sensaciones, dificultades, repeticion de comidas y posibles mejoras.
+              - Usa las "Comidas del usuario por dia" para detectar platos repetidos, horarios, concentracion de calorias, falta de proteina, exceso de carbohidratos o poca variedad.
+              - No recomiendes "registrar mas comidas", "usar la app" ni acciones administrativas. Recomienda cambios alimenticios reales.
+              - Prioriza calidad de alimentos, balance de plato, saciedad, proteinas, fibra, hidratacion, snacks, variedad, porciones y distribucion de comidas.
+              - Si detectas un problema, explica que cambiar y por que, con una alternativa concreta.
+              - Da sugerencias realistas para una persona comun: opciones faciles de comprar, cocinar o preparar.
+              - Recomienda snacks cuando ayuden al patron observado, por ejemplo yogur griego con fruta, huevos cocidos, queso campesino, frutos secos medidos, fruta con mantequilla de mani, hummus con verduras, atun con galletas integrales o batido con proteina.
+              - Si hay exceso de arroz, harinas o carbohidratos y poca proteina, sugiere reducir una parte del carbohidrato y agregar proteina como pollo, huevos, atun, carne magra, yogur griego, lentejas, frijoles, garbanzos o tofu.
+              - Si la dieta se ve repetitiva, sugiere variantes concretas del mismo plato: cambiar arroz blanco por papa, yuca moderada, quinoa, arroz integral o mas verduras; alternar sancocho con ensalada con proteina, bowl balanceado o sopa con legumbres.
+              - Si faltan verduras o fibra, recomienda agregar ensalada, verduras salteadas, aguacate medido, frutas enteras, legumbres o semillas.
+              - Si las grasas son altas, sugiere ajustes concretos como moderar aceites, fritos, salsas o porciones de aguacate, sin eliminar alimentos completos.
+              - Si las calorias se concentran en una comida, sugiere repartir la energia con desayuno, cena ligera o snacks proteicos.
+              - Cada description debe ser corta, util, accionable y mencionar una comida, snack o cambio especifico cuando aplique.
+              - Responde solo JSON, sin markdown.
 
-Periodo: ${input.period}
-Dias analizados: ${input.totalDays}
-Comidas registradas: ${input.meals.length}
-Notas disponibles: ${input.notes.length}
-Calorias totales: ${totals.calories}
-Proteinas totales: ${totals.proteins}g
-Carbohidratos totales: ${totals.carbs}g
-Grasas totales: ${totals.fats}g
+              Periodo: ${input.period}
+              Dias analizados: ${input.totalDays}
+              Comidas registradas: ${input.meals.length}
+              Notas disponibles: ${input.notes.length}
+              Calorias totales: ${totals.calories}
+              Proteinas totales: ${totals.proteins}g
+              Carbohidratos totales: ${totals.carbs}g
+              Grasas totales: ${totals.fats}g
 
-Contexto base:
-${sourceText}`,
+              Notas del usuario:
+              ${userNotesContext}
+
+              Comidas del usuario por dia:
+              ${userMealsContext}
+
+              Contexto base:
+              ${sourceText}
+            `,
             },
           ],
         },
@@ -249,6 +261,40 @@ ${sourceText}`,
     }
 
     return `El periodo muestra ${input.meals.length} comidas registradas, con una carga aproximada de ${totals.calories} calorias y un balance de ${totals.proteins}g de proteina, ${totals.carbs}g de carbohidratos y ${totals.fats}g de grasas. ${notesText}`;
+  }
+
+  private buildUserNotesContext(input: RecommendationAnalysisInput): string {
+    if (!input.notes.length) {
+      return 'No hay notas del usuario para este periodo.';
+    }
+
+    return input.notes.map((note) => `- ${note.date}: ${note.note}`).join('\n');
+  }
+
+  private buildUserMealsContext(input: RecommendationAnalysisInput): string {
+    if (!input.meals.length) {
+      return 'No hay comidas registradas para este periodo.';
+    }
+
+    const mealsByDate = input.meals.reduce<Map<string, string[]>>(
+      (groupedMeals, meal) => {
+        const dateMeals = groupedMeals.get(meal.date) ?? [];
+
+        dateMeals.push(
+          `${meal.time} - ${meal.type}: ${meal.name} (${meal.calories} kcal, proteina ${meal.proteins ?? 0}g, carbohidratos ${meal.carbs ?? 0}g, grasas ${meal.fats ?? 0}g)`,
+        );
+        groupedMeals.set(meal.date, dateMeals);
+
+        return groupedMeals;
+      },
+      new Map<string, string[]>(),
+    );
+
+    return Array.from(mealsByDate.entries())
+      .map(([date, meals]) =>
+        [`- ${date}:`, ...meals.map((meal) => `  * ${meal}`)].join('\n'),
+      )
+      .join('\n');
   }
 
   private calculateTotals(input: RecommendationAnalysisInput): MacroTotals {
