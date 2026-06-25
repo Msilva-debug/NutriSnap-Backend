@@ -11,6 +11,7 @@ import { Meal, MealType } from './entities/meal.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MealGateway } from './meal.gateway';
+import { FoodTextEmbeddingService } from '../food-embedding/food-text-embedding.service';
 
 export interface MealHistoryResponse {
   date: string;
@@ -27,6 +28,7 @@ export class MealService {
     @InjectRepository(DailyFoodNote)
     private readonly dailyFoodNoteRepository: Repository<DailyFoodNote>,
     private readonly mealGateway: MealGateway,
+    private readonly foodTextEmbeddingService: FoodTextEmbeddingService,
   ) {}
 
   async create(createMealDto: CreateMealDto, userId: number): Promise<Meal> {
@@ -76,10 +78,7 @@ export class MealService {
     });
   }
 
-  async findByDate(
-    userId: number,
-    date: string,
-  ): Promise<MealHistoryResponse> {
+  async findByDate(userId: number, date: string): Promise<MealHistoryResponse> {
     const formattedDate = this.validateHistoryDate(date);
     const [meals, dailyFoodNote] = await Promise.all([
       this.mealRepository.find({
@@ -179,7 +178,11 @@ export class MealService {
           note,
         });
 
-    return this.dailyFoodNoteRepository.save(dailyFoodNote);
+    const savedNote = await this.dailyFoodNoteRepository.save(dailyFoodNote);
+
+    await this.foodTextEmbeddingService.upsertDailyNoteEmbedding(savedNote);
+
+    return savedNote;
   }
 
   private validateMealType(type: MealType): void {

@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Query, Req, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOkResponse,
@@ -30,7 +30,7 @@ export class RecommendationsController {
   @ApiQuery({
     name: 'period',
     required: true,
-    enum: ['daily', 'monthly', 'range'],
+    enum: ['daily', 'range'],
     description: 'Periodo a analizar',
   })
   @ApiQuery({
@@ -38,12 +38,6 @@ export class RecommendationsController {
     required: false,
     example: '2026-06-17',
     description: 'Requerido cuando period=daily. Formato YYYY-MM-DD.',
-  })
-  @ApiQuery({
-    name: 'month',
-    required: false,
-    example: '2026-06',
-    description: 'Requerido cuando period=monthly. Formato YYYY-MM.',
   })
   @ApiQuery({
     name: 'startDate',
@@ -64,7 +58,7 @@ export class RecommendationsController {
       properties: {
         period: {
           type: 'string',
-          enum: ['daily', 'monthly', 'range'],
+          enum: ['daily', 'range'],
           example: 'range',
         },
         summary: {
@@ -106,5 +100,26 @@ export class RecommendationsController {
       request.user.id,
       query,
     );
+  }
+
+  @Post('embeddings/backfill')
+  @ApiOperation({
+    summary: 'Generar embeddings para notas diarias existentes',
+  })
+  @ApiOkResponse({
+    description: 'Embeddings generados para el usuario autenticado',
+    schema: {
+      type: 'object',
+      properties: {
+        dailyNotes: {
+          type: 'number',
+          example: 17,
+        },
+      },
+      required: ['dailyNotes'],
+    },
+  })
+  backfillEmbeddings(@Req() request: AuthenticatedRequest) {
+    return this.recommendationsService.backfillEmbeddings(request.user.id);
   }
 }

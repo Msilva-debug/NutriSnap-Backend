@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Controller,
   Get,
   Post,
@@ -34,7 +33,6 @@ import { SaveMealHistoryNoteDto } from './dto/save-meal-history-note.dto';
 import { UpdateMealDto } from './dto/update-meal.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
-import { MonthlyFoodSummaryService } from './monthly-food-summary.service';
 import { MealImageAnalysisService } from './meal-image-analysis.service';
 import type { UploadedMealImage } from './meal-image-analysis.service';
 
@@ -47,7 +45,6 @@ type AuthenticatedRequest = Request & { user: AuthenticatedUser };
 export class MealController {
   constructor(
     private readonly mealService: MealService,
-    private readonly monthlyFoodSummaryService: MonthlyFoodSummaryService,
     private readonly mealImageAnalysisService: MealImageAnalysisService,
   ) {}
 
@@ -101,30 +98,6 @@ export class MealController {
     return this.mealService.saveHistoryNote(
       request.user.id,
       saveMealHistoryNoteDto,
-    );
-  }
-
-  @Post('monthly-summary/generate')
-  @ApiOperation({
-    summary:
-      'Generar manualmente el resumen mensual de comidas del usuario autenticado',
-  })
-  @ApiQuery({
-    name: 'referenceDate',
-    required: false,
-    example: '2026-07-01',
-    description:
-      'Fecha de referencia en formato YYYY-MM-DD. Se procesa el mes anterior a esta fecha.',
-  })
-  @ApiResponse({ status: 201, description: 'Resumen mensual generado' })
-  @ApiResponse({ status: 400, description: 'Fecha de referencia invalida' })
-  generateMonthlySummary(
-    @Query('referenceDate') referenceDate: string | undefined,
-    @Req() request: AuthenticatedRequest,
-  ) {
-    return this.monthlyFoodSummaryService.generatePreviousMonthSummaryForUser(
-      request.user.id,
-      this.parseReferenceDate(referenceDate),
     );
   }
 
@@ -199,36 +172,5 @@ export class MealController {
     @Req() request: AuthenticatedRequest,
   ) {
     return this.mealService.remove(id, request.user.id);
-  }
-
-  private parseReferenceDate(referenceDate?: string): Date {
-    if (!referenceDate?.trim()) {
-      return new Date();
-    }
-
-    const formattedDate = referenceDate.trim();
-    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(formattedDate);
-
-    if (!match) {
-      throw new BadRequestException(
-        'La fecha de referencia debe tener formato YYYY-MM-DD',
-      );
-    }
-
-    const [, yearValue, monthValue, dayValue] = match;
-    const year = Number(yearValue);
-    const month = Number(monthValue);
-    const day = Number(dayValue);
-    const parsedDate = new Date(year, month - 1, day, 12);
-
-    if (
-      parsedDate.getFullYear() !== year ||
-      parsedDate.getMonth() !== month - 1 ||
-      parsedDate.getDate() !== day
-    ) {
-      throw new BadRequestException('La fecha de referencia es invalida');
-    }
-
-    return parsedDate;
   }
 }

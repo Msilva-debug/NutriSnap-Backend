@@ -1,5 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
+  FoodTextEmbeddingService,
+  SimilarEmbeddingResult,
+} from '../food-embedding/food-text-embedding.service';
+import {
   Recommendation,
   RecommendationAnalysisInput,
   RecommendationsResponse,
@@ -39,6 +43,10 @@ export class RecommendationAiService {
   private readonly geminiApiUrl =
     'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
+  constructor(
+    private readonly foodTextEmbeddingService: FoodTextEmbeddingService,
+  ) {}
+
   async buildFromText(
     input: RecommendationAnalysisInput,
     sourceText: string,
@@ -58,10 +66,21 @@ export class RecommendationAiService {
     }
 
     try {
+      const similarContent =
+        await this.foodTextEmbeddingService.findSimilarContent(
+          input.userId,
+          this.buildEmbeddingSearchText(input, context),
+          {
+            limit: 4,
+            excludeSources: input.embeddingExclusions,
+          },
+        );
       const response = await fetch(`${this.geminiApiUrl}?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(this.buildGeminiRequest(input, context)),
+        body: JSON.stringify(
+          this.buildGeminiRequest(input, context, similarContent),
+        ),
       });
 
       if (!response.ok) {
@@ -91,10 +110,13 @@ export class RecommendationAiService {
   private buildGeminiRequest(
     input: RecommendationAnalysisInput,
     sourceText: string,
+    similarContent: SimilarEmbeddingResult[],
   ): Record<string, unknown> {
     const totals = this.calculateTotals(input);
     const userNotesContext = this.buildUserNotesContext(input);
     const userMealsContext = this.buildUserMealsContext(input);
+    const semanticMemoryContext =
+      this.buildSemanticMemoryContext(similarContent);
 
     return {
       contents: [
@@ -125,6 +147,7 @@ export class RecommendationAiService {
               - Usa lenguaje simple, cercano y motivador.
               - Usa las "Notas del usuario" como contexto prioritario para entender habitos, sensaciones, dificultades, repeticion de comidas y posibles mejoras.
               - Usa las "Comidas del usuario por dia" para detectar platos repetidos, horarios, concentracion de calorias, falta de proteina, exceso de carbohidratos o poca variedad.
+              - Usa la "Memoria semantica historica similar" para reconocer patrones alimenticios repetidos del usuario, pero no la menciones como tecnologia.
               - No recomiendes "registrar mas comidas", "usar la app" ni acciones administrativas. Recomienda cambios alimenticios reales.
               - Prioriza calidad de alimentos, balance de plato, saciedad, proteinas, fibra, hidratacion, snacks, variedad, porciones y distribucion de comidas.
               - Si detectas un problema, explica que cambiar y por que, con una alternativa concreta.
@@ -152,6 +175,9 @@ export class RecommendationAiService {
 
               Comidas del usuario por dia:
               ${userMealsContext}
+
+              Memoria semantica historica similar:
+              ${semanticMemoryContext}
 
               Contexto base:
               ${sourceText}
@@ -295,6 +321,43 @@ export class RecommendationAiService {
         [`- ${date}:`, ...meals.map((meal) => `  * ${meal}`)].join('\n'),
       )
       .join('\n');
+  }
+
+  private buildSemanticMemoryContext(
+    similarContent: SimilarEmbeddingResult[],
+  ): string {
+    if (!similarContent.length) {
+      return 'No hay recuerdos alimenticios similares guardados para este usuario.';
+    }
+
+    return similarContent
+      .map(
+        (item) =>
+          `- ${item.sourceType} #${item.sourceId} (similitud ${item.similarity.toFixed(
+            3,
+          )}): ${this.truncateText(item.content, 1200)}`,
+      )
+      .join('\n');
+  }
+
+  private buildEmbeddingSearchText(
+    input: RecommendationAnalysisInput,
+    sourceText: string,
+  ): string {
+    return [
+      `Periodo: ${input.period}`,
+      `Notas: ${this.buildUserNotesContext(input)}`,
+      `Comidas: ${this.buildUserMealsContext(input)}`,
+      `Contexto: ${sourceText}`,
+    ].join('\n');
+  }
+
+  private truncateText(text: string, maxLength: number): string {
+    if (text.length <= maxLength) {
+      return text;
+    }
+
+    return `${text.slice(0, maxLength).trim()}...`;
   }
 
   private calculateTotals(input: RecommendationAnalysisInput): MacroTotals {

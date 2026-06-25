@@ -1,12 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
 
-export interface MonthPeriod {
-  endDate: string;
-  month: number;
-  startDate: string;
-  year: number;
-}
-
 export function validateDateParam(
   value: string | undefined,
   field: string,
@@ -39,36 +32,6 @@ export function validateDateParam(
   return formattedDate;
 }
 
-export function validateMonthParam(value: string | undefined): MonthPeriod {
-  if (!value?.trim()) {
-    throw new BadRequestException('month es requerido');
-  }
-
-  const formattedMonth = value.trim();
-  const match = /^(\d{4})-(\d{2})$/.exec(formattedMonth);
-
-  if (!match) {
-    throw new BadRequestException('month debe tener formato YYYY-MM');
-  }
-
-  const [, yearValue, monthValue] = match;
-  const year = Number(yearValue);
-  const month = Number(monthValue);
-
-  if (month < 1 || month > 12) {
-    throw new BadRequestException('month es invalido');
-  }
-
-  const endDate = new Date(Date.UTC(year, month, 0));
-
-  return {
-    year,
-    month,
-    startDate: `${yearValue}-${monthValue}-01`,
-    endDate: formatUtcDate(endDate),
-  };
-}
-
 export function validateDateRange(
   startDateValue: string | undefined,
   endDateValue: string | undefined,
@@ -95,12 +58,4 @@ function getUtcDateTime(date: string): number {
   const [year, month, day] = date.split('-').map(Number);
 
   return Date.UTC(year, month - 1, day);
-}
-
-function formatUtcDate(date: Date): string {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(date.getUTCDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
 }

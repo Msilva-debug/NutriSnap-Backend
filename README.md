@@ -1,98 +1,170 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# NutriSnap Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Backend de NutriSnap construido con NestJS, TypeORM y PostgreSQL. La API maneja usuarios, autenticacion JWT, comidas, notas diarias, analisis de imagenes con Gemini y recomendaciones nutricionales con contexto historico.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Requisitos
 
-## Description
+- Node.js
+- PostgreSQL
+- Una API key de Gemini para analisis con IA
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+## Instalacion
 
 ```bash
-$ npm install
+npm install
 ```
 
-## Compile and run the project
+## Variables De Entorno
+
+Crear un archivo `.env` en la raiz del proyecto. Este archivo esta ignorado por Git.
+
+```env
+PORT=8080
+JWT_SECRET=dev-jwt-secret
+JWT_EXPIRES_IN=1d
+GEMINI_API_KEY=tu_api_key_de_gemini
+GEMINI_EMBEDDING_MODEL=gemini-embedding-2
+```
+
+`GEMINI_EMBEDDING_MODEL` es opcional. Si no se define, el backend usa `gemini-embedding-2`.
+
+## Ejecutar El Proyecto
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm run start:dev
 ```
 
-## Run tests
+## Tests
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm test
 ```
 
-## Deployment
+## Embeddings De Texto
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+NutriSnap utiliza text embeddings para crear una memoria semantica alimenticia por usuario.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Un embedding convierte texto en un vector numerico. Textos con significados parecidos quedan cerca entre si, aunque no usen exactamente las mismas palabras. Esto permite buscar notas anteriores similares al periodo actual y usarlas como contexto adicional para la IA.
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+Documentacion oficial de Gemini Embeddings:
+
+https://ai.google.dev/gemini-api/docs/embeddings
+
+## Para Que Se Usan Los Embeddings
+
+Los embeddings se usan para mejorar las recomendaciones nutricionales. No reemplazan los calculos estructurados de calorias, proteinas, carbohidratos o grasas. Esos calculos siguen saliendo desde SQL y reglas del backend.
+
+La funcion del embedding es encontrar patrones historicos parecidos, por ejemplo:
+
+- dias con mucho arroz y poca proteina
+- notas donde el usuario menciona pesadez o baja variedad
+- rangos con comidas repetidas
+- periodos con alta concentracion de calorias en una sola comida
+
+Luego esos textos similares se agregan al prompt de Gemini como memoria historica.
+
+## Tabla De Embeddings
+
+Los embeddings se guardan en:
+
+```text
+food_text_embeddings
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Campos principales:
 
-## Resources
+```text
+userId       -> usuario propietario del texto
+sourceType   -> daily_note
+sourceId     -> id de daily_food_notes
+content      -> texto usado para crear el embedding
+embedding    -> vector guardado como JSONB
+model        -> modelo Gemini usado
+dimensions   -> cantidad de dimensiones del vector
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+Se guarda como `JSONB` para evitar depender de extensiones como `pgvector` en esta etapa. La similitud se calcula en TypeScript usando similitud coseno.
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## Flujo De Embeddings
 
-## Support
+Cuando se guarda o edita una nota diaria:
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```text
+PATCH /meal/history/note
+  -> guarda daily_food_notes
+  -> genera embedding de la nota actualizada
+  -> guarda o actualiza food_text_embeddings
+```
 
-## Stay in touch
+Todos los dias a las 11:58 PM, hora Colombia:
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```text
+cron diario
+  -> busca las notas de la fecha actual
+  -> valida si la nota ya tiene embedding
+  -> crea solo los embeddings faltantes
+```
 
-## License
+Cuando se piden recomendaciones:
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+```text
+GET /recommendations
+  -> obtiene comidas y notas del periodo
+  -> genera un embedding temporal del contexto actual
+  -> busca textos historicos similares del mismo usuario
+  -> manda a Gemini:
+     - notas del usuario
+     - comidas del usuario por dia
+     - memoria semantica historica similar
+```
+
+Para generar embeddings de datos existentes se puede ejecutar un backfill protegido con JWT:
+
+```http
+POST /recommendations/embeddings/backfill
+```
+
+Este endpoint toma el usuario autenticado desde el JWT y genera embeddings para sus registros actuales en:
+
+```text
+daily_food_notes
+```
+
+## Recomendaciones
+
+Endpoint protegido con JWT:
+
+```http
+GET /recommendations
+```
+
+Ejemplos:
+
+```http
+GET /recommendations?period=daily&date=2026-06-17
+GET /recommendations?period=range&startDate=2026-06-01&endDate=2026-06-17
+```
+
+Respuesta:
+
+```json
+{
+  "period": "daily",
+  "summary": "Resumen cualitativo del periodo analizado",
+  "recommendations": [
+    {
+      "category": "Proteinas",
+      "title": "Refuerza tu comida principal",
+      "description": "Podrias reducir una parte del arroz y agregar huevos, pollo o lentejas para mejorar proteina y saciedad."
+    }
+  ]
+}
+```
+
+## Notas Tecnicas
+
+- Los embeddings son una tecnica de IA, no un patron de diseno.
+- El patron de diseno usado para recomendaciones es Strategy + Factory.
+- `daily` y `range` tienen estrategias separadas.
+- Gemini genera recomendaciones cuando `GEMINI_API_KEY` esta configurada.
+- Si Gemini falla, el backend responde con recomendaciones calculadas por reglas simples.

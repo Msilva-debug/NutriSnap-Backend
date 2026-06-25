@@ -207,19 +207,18 @@ export class CreateInitialSchema1710000000000 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE TABLE IF NOT EXISTS monthly_food_summaries (
+      CREATE TABLE IF NOT EXISTS food_text_embeddings (
         id SERIAL PRIMARY KEY,
         "userId" INTEGER NOT NULL,
-        year INTEGER NOT NULL,
-        month INTEGER NOT NULL,
-        summary TEXT NOT NULL,
-        status VARCHAR(20) NOT NULL DEFAULT 'completed',
-        model VARCHAR(80),
-        "promptVersion" VARCHAR(40),
-        "generatedAt" TIMESTAMP NOT NULL DEFAULT now(),
+        "sourceType" VARCHAR(40) NOT NULL,
+        "sourceId" INTEGER NOT NULL,
+        content TEXT NOT NULL,
+        embedding JSONB NOT NULL,
+        model VARCHAR(100) NOT NULL,
+        dimensions INTEGER NOT NULL,
         "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
         "updatedAt" TIMESTAMP NOT NULL DEFAULT now(),
-        CONSTRAINT "FK_monthly_food_summaries_user"
+        CONSTRAINT "FK_food_text_embeddings_user"
           FOREIGN KEY ("userId")
           REFERENCES users(id)
           ON DELETE CASCADE
@@ -228,14 +227,19 @@ export class CreateInitialSchema1710000000000 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE UNIQUE INDEX IF NOT EXISTS "IDX_monthly_food_summaries_user_period"
-      ON monthly_food_summaries ("userId", year, month);
+      CREATE UNIQUE INDEX IF NOT EXISTS "IDX_food_text_embeddings_user_source"
+      ON food_text_embeddings ("userId", "sourceType", "sourceId");
+    `);
+
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS "IDX_food_text_embeddings_user_type"
+      ON food_text_embeddings ("userId", "sourceType");
     `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      DROP TABLE IF EXISTS monthly_food_summaries;
+      DROP TABLE IF EXISTS food_text_embeddings;
     `);
 
     await queryRunner.query(`

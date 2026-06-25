@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { FoodTextEmbeddingService } from '../food-embedding/food-text-embedding.service';
 import { RecommendationStrategyFactory } from './recommendation-strategy.factory';
 import {
   GetRecommendationsQuery,
@@ -9,6 +10,7 @@ import {
 export class RecommendationsService {
   constructor(
     private readonly recommendationStrategyFactory: RecommendationStrategyFactory,
+    private readonly foodTextEmbeddingService: FoodTextEmbeddingService,
   ) {}
 
   getRecommendations(
@@ -20,5 +22,9 @@ export class RecommendationsService {
     );
 
     return strategy.generate(userId, query);
+  }
+
+  backfillEmbeddings(userId: number) {
+    return this.foodTextEmbeddingService.backfillUserEmbeddings(userId);
   }
 }

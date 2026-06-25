@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { DailyRecommendationStrategy } from './strategies/daily-recommendation.strategy';
-import { MonthlyRecommendationStrategy } from './strategies/monthly-recommendation.strategy';
 import { RangeRecommendationStrategy } from './strategies/range-recommendation.strategy';
 import {
   RecommendationPeriod,
@@ -17,12 +16,10 @@ export class RecommendationStrategyFactory {
 
   constructor(
     dailyRecommendationStrategy: DailyRecommendationStrategy,
-    monthlyRecommendationStrategy: MonthlyRecommendationStrategy,
     rangeRecommendationStrategy: RangeRecommendationStrategy,
   ) {
     this.strategies = {
       daily: dailyRecommendationStrategy,
-      monthly: monthlyRecommendationStrategy,
       range: rangeRecommendationStrategy,
     };
   }
@@ -35,9 +32,7 @@ export class RecommendationStrategyFactory {
     const normalizedPeriod = period.trim() as RecommendationPeriod;
 
     if (!recommendationPeriods.includes(normalizedPeriod)) {
-      throw new BadRequestException(
-        'period solo puede ser: daily, monthly, range',
-      );
+      throw new BadRequestException('period solo puede ser: daily, range');
     }
 
     return this.strategies[normalizedPeriod];

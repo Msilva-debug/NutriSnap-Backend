@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { FoodTextEmbeddingSourceType } from '../../food-embedding/entities/food-text-embedding.entity';
 import { DailyFoodNote } from '../../meal/entities/daily-food-note.entity';
 import { Meal } from '../../meal/entities/meal.entity';
 import { RecommendationAiService } from '../recommendation-ai.service';
@@ -41,17 +42,25 @@ export class DailyRecommendationStrategy implements RecommendationStrategy {
     ]);
 
     const input = {
+      userId,
       period: this.period,
       meals,
       notes: dailyFoodNote ? [dailyFoodNote] : [],
       totalDays: 1,
       summary: dailyFoodNote?.note,
+      embeddingExclusions: dailyFoodNote
+        ? [
+            {
+              sourceType: FoodTextEmbeddingSourceType.DAILY_NOTE,
+              sourceId: dailyFoodNote.id,
+            },
+          ]
+        : [],
     };
     const aiRecommendations = await this.recommendationAiService.buildFromText(
       input,
       this.buildDailyContext(date, dailyFoodNote, meals),
     );
-    console.log('AI Recommendations:', aiRecommendations);
 
     return aiRecommendations ?? this.recommendationRuleEngine.build(input);
   }
