@@ -1,8 +1,14 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import {
   FoodTextEmbeddingService,
   SimilarEmbeddingResult,
 } from '../../food-embedding/food-text-embedding.service';
+import {
+  NutritionPlan,
+  UserGoal,
+} from '../../nutrition-plan/entities/nutrition-plan.entity';
 import { RecommendationAnalysisInput } from '../recommendation.types';
 import { NUTRITION_RECOMMENDATION_SYSTEM_PROMPT } from './nutrition-recommendation.prompt';
 
@@ -17,6 +23,8 @@ interface MacroTotals {
 export class NutritionRecommendationAgent {
   constructor(
     private readonly foodTextEmbeddingService: FoodTextEmbeddingService,
+    @InjectRepository(NutritionPlan)
+    private readonly nutritionPlanRepository: Repository<NutritionPlan>,
   ) {}
 
   async buildGeminiRequest(
@@ -48,10 +56,9 @@ export class NutritionRecommendationAgent {
     const totals = this.calculateTotals(input);
     const userNotesContext = this.buildUserNotesContext(input);
     const userMealsContext = this.buildUserMealsContext(input);
+    const nutritionGoalContext = await this.buildNutritionGoalContext(input);
     const semanticMemory = await this.buildSemanticMemory(input, sourceText);
-    console.log('Semantic memory:', semanticMemory);
-    console.log('User notes context:', userNotesContext);
-    console.log('User meals context:', userMealsContext);
+
     return `
     ${NUTRITION_RECOMMENDATION_SYSTEM_PROMPT}
 
@@ -64,6 +71,9 @@ export class NutritionRecommendationAgent {
     Proteinas totales: ${totals.proteins}g
     Carbohidratos totales: ${totals.carbs}g
     Grasas totales: ${totals.fats}g
+
+    Objetivo y metas del usuario:
+    ${nutritionGoalContext}
 
     Notas del usuario:
     ${userNotesContext}
@@ -145,6 +155,57 @@ export class NutritionRecommendationAgent {
         ),
       },
     };
+  }
+
+  private async buildNutritionGoalContext(
+    input: RecommendationAnalysisInput,
+  ): Promise<string> {
+    const nutritionPlan = await this.nutritionPlanRepository.findOne({
+      where: { userId: input.userId },
+    });
+
+    if (!nutritionPlan) {
+      return 'No hay plan nutricional registrado. Orienta las recomendaciones a mejorar habitos, balance, saciedad y variedad sin asumir un objetivo especifico.';
+    }
+
+    return [
+      `Objetivo principal: ${this.translateGoal(nutritionPlan.goal)}`,
+      `Calorias diarias objetivo: ${nutritionPlan.dailyCalorieGoal}`,
+      `Calorias de mantenimiento estimadas: ${nutritionPlan.maintenanceCalories}`,
+      `Proteina objetivo: ${nutritionPlan.proteinGoal}g`,
+      `Carbohidratos objetivo: ${nutritionPlan.carbsGoal}g`,
+      `Grasas objetivo: ${nutritionPlan.fatsGoal}g`,
+      this.buildGoalGuidance(nutritionPlan.goal),
+    ].join('\n');
+  }
+
+  private translateGoal(goal: UserGoal): string {
+    const goalLabels: Record<UserGoal, string> = {
+      [UserGoal.LOSE_FAT]: 'perdida de grasa',
+      [UserGoal.GAIN_MUSCLE]: 'ganancia muscular',
+      [UserGoal.BODY_RECOMPOSITION]: 'recomposicion corporal',
+      [UserGoal.MAINTAIN_WEIGHT]: 'mantenimiento de peso',
+      [UserGoal.IMPROVE_HABITS]: 'mejorar habitos alimenticios',
+    };
+
+    return goalLabels[goal] ?? goal;
+  }
+
+  private buildGoalGuidance(goal: UserGoal): string {
+    const guidanceByGoal: Record<UserGoal, string> = {
+      [UserGoal.LOSE_FAT]:
+        'Enfoca las recomendaciones en saciedad, deficit sostenible, proteina suficiente, fibra, verduras, control de porciones y menor densidad calorica sin prohibiciones extremas.',
+      [UserGoal.GAIN_MUSCLE]:
+        'Enfoca las recomendaciones en suficiente energia, proteina distribuida durante el dia, carbohidratos utiles alrededor de comidas principales y snacks proteicos.',
+      [UserGoal.BODY_RECOMPOSITION]:
+        'Enfoca las recomendaciones en proteina alta, fuerza de habitos, porciones moderadas, carbohidratos de calidad y consistencia sin bajar demasiado la energia.',
+      [UserGoal.MAINTAIN_WEIGHT]:
+        'Enfoca las recomendaciones en estabilidad, variedad, balance de plato, horarios sostenibles y evitar excesos repetidos.',
+      [UserGoal.IMPROVE_HABITS]:
+        'Enfoca las recomendaciones en cambios pequenos y sostenibles: mas variedad, fibra, hidratacion, snacks utiles y mejor distribucion de comidas.',
+    };
+
+    return `Guia para recomendar segun objetivo: ${guidanceByGoal[goal]}`;
   }
 
   private buildUserNotesContext(input: RecommendationAnalysisInput): string {

@@ -125,6 +125,12 @@ Para generar embeddings de datos existentes se puede ejecutar un backfill proteg
 POST /recommendations/embeddings/backfill
 ```
 
+Tambien existe una ruta explicita para notas diarias:
+
+```http
+POST /recommendations/notes/embeddings/backfill
+```
+
 Este endpoint toma el usuario autenticado desde el JWT y genera embeddings para sus registros actuales en:
 
 ```text

@@ -14,6 +14,17 @@ import type { GetRecommendationsQuery } from './recommendation.types';
 
 type AuthenticatedRequest = Request & { user: AuthenticatedUser };
 
+const embeddingsBackfillResponseSchema = {
+  type: 'object',
+  properties: {
+    dailyNotes: {
+      type: 'number',
+      example: 17,
+    },
+  },
+  required: ['dailyNotes'],
+};
+
 @ApiTags('recommendations')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
@@ -183,18 +194,23 @@ export class RecommendationsController {
   })
   @ApiOkResponse({
     description: 'Embeddings generados para el usuario autenticado',
-    schema: {
-      type: 'object',
-      properties: {
-        dailyNotes: {
-          type: 'number',
-          example: 17,
-        },
-      },
-      required: ['dailyNotes'],
-    },
+    schema: embeddingsBackfillResponseSchema,
   })
   backfillEmbeddings(@Req() request: AuthenticatedRequest) {
+    return this.recommendationsService.backfillEmbeddings(request.user.id);
+  }
+
+  @Post('notes/embeddings/backfill')
+  @ApiOperation({
+    summary:
+      'Pasar todas las notas diarias del usuario autenticado a la tabla de embeddings',
+  })
+  @ApiOkResponse({
+    description:
+      'Embeddings creados o actualizados desde todas las notas diarias del usuario autenticado',
+    schema: embeddingsBackfillResponseSchema,
+  })
+  backfillNoteEmbeddings(@Req() request: AuthenticatedRequest) {
     return this.recommendationsService.backfillEmbeddings(request.user.id);
   }
 }
