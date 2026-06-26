@@ -10,22 +10,24 @@ export class FoodTextEmbeddingCron {
     private readonly foodTextEmbeddingService: FoodTextEmbeddingService,
   ) {}
 
-  @Cron('0 58 23 * * *', {
-    timeZone: 'America/Bogota',
-  })
+  // Cron diario oficial:
+  // @Cron('0 58 23 * * *', {
+  //   timeZone: 'America/Bogota',
+  // })
+  @Cron(new Date(Date.now() + 10 * 1000))
   async syncDailyNoteEmbeddings(): Promise<void> {
-    this.logger.log('Starting daily food note embedding sync');
+    this.logger.log('Starting one-time daily food note embedding sync');
 
     try {
       const result =
         await this.foodTextEmbeddingService.syncCurrentDateDailyNoteEmbeddings();
 
       this.logger.log(
-        `Daily food note embedding sync finished for ${result.date}: created=${result.created}, skipped=${result.skipped}, failed=${result.failed}`,
+        `One-time daily food note embedding sync finished for ${result.date}: created=${result.created}, skipped=${result.skipped}, failed=${result.failed}`,
       );
     } catch (error) {
       this.logger.error(
-        'Failed to sync daily food note embeddings',
+        'Failed to run one-time daily food note embedding sync',
         error instanceof Error ? error.stack : undefined,
       );
     }

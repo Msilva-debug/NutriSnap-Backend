@@ -5,7 +5,10 @@ import { FoodTextEmbeddingSourceType } from '../../food-embedding/entities/food-
 import { DailyFoodNote } from '../../meal/entities/daily-food-note.entity';
 import { Meal } from '../../meal/entities/meal.entity';
 import { RecommendationAiService } from '../recommendation-ai.service';
-import { validateDateParam } from '../recommendation-date.utils';
+import {
+  buildTwoMonthComparisonWindow,
+  validateDateParam,
+} from '../recommendation-date.utils';
 import { RecommendationRuleEngine } from '../recommendation-rule-engine.service';
 import {
   GetRecommendationsQuery,
@@ -48,6 +51,7 @@ export class DailyRecommendationStrategy implements RecommendationStrategy {
       notes: dailyFoodNote ? [dailyFoodNote] : [],
       totalDays: 1,
       summary: dailyFoodNote?.note,
+      semanticMemoryComparisonWindow: buildTwoMonthComparisonWindow(date),
       embeddingExclusions: dailyFoodNote
         ? [
             {

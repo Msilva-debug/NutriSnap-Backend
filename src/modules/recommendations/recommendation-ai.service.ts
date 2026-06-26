@@ -1,11 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  FoodTextEmbeddingService,
-  SimilarEmbeddingResult,
-} from '../food-embedding/food-text-embedding.service';
+import { NutritionRecommendationAgent } from './agents/nutrition-recommendation.agent';
 import {
   Recommendation,
   RecommendationAnalysisInput,
+  RecommendationComparison,
+  RecommendationComparisonItem,
   RecommendationsResponse,
 } from './recommendation.types';
 
@@ -26,6 +25,7 @@ interface GeminiErrorResponse {
 }
 
 interface AiRecommendationsResponse {
+  comparison?: RecommendationComparison;
   recommendations?: Recommendation[];
   summary?: string;
 }
@@ -44,7 +44,7 @@ export class RecommendationAiService {
     'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
   constructor(
-    private readonly foodTextEmbeddingService: FoodTextEmbeddingService,
+    private readonly nutritionRecommendationAgent: NutritionRecommendationAgent,
   ) {}
 
   async buildFromText(
@@ -66,21 +66,15 @@ export class RecommendationAiService {
     }
 
     try {
-      const similarContent =
-        await this.foodTextEmbeddingService.findSimilarContent(
-          input.userId,
-          this.buildEmbeddingSearchText(input, context),
-          {
-            limit: 4,
-            excludeSources: input.embeddingExclusions,
-          },
+      const geminiRequest =
+        await this.nutritionRecommendationAgent.buildGeminiRequest(
+          input,
+          context,
         );
       const response = await fetch(`${this.geminiApiUrl}?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          this.buildGeminiRequest(input, context, similarContent),
-        ),
+        body: JSON.stringify(geminiRequest),
       });
 
       if (!response.ok) {
@@ -107,91 +101,6 @@ export class RecommendationAiService {
     }
   }
 
-  private buildGeminiRequest(
-    input: RecommendationAnalysisInput,
-    sourceText: string,
-    similarContent: SimilarEmbeddingResult[],
-  ): Record<string, unknown> {
-    const totals = this.calculateTotals(input);
-    const userNotesContext = this.buildUserNotesContext(input);
-    const userMealsContext = this.buildUserMealsContext(input);
-    const semanticMemoryContext =
-      this.buildSemanticMemoryContext(similarContent);
-
-    return {
-      contents: [
-        {
-          parts: [
-            {
-              text: `
-              Actua como un asistente nutricional para NutriSnap.
-
-              Genera recomendaciones utiles, claras y accionables sobre la vida alimenticia de una persona a partir de sus registros de alimentacion.
-              No des diagnosticos medicos. No inventes datos que no esten en el contexto.
-              El campo "summary" debe ser un resumen cualitativo nuevo del periodo, no copies literalmente las notas ni el resumen base.
-
-              Devuelve un JSON valido con este formato exacto:
-              {
-                "summary": "Resumen cualitativo corto del periodo analizado",
-                "recommendations": [
-                  {
-                    "category": "Categoria corta",
-                    "title": "Titulo corto",
-                    "description": "Recomendacion clara y concreta"
-                  }
-                ]
-              }
-
-              Reglas:
-              - Genera entre 3 y 5 recomendaciones.
-              - Usa lenguaje simple, cercano y motivador.
-              - Usa las "Notas del usuario" como contexto prioritario para entender habitos, sensaciones, dificultades, repeticion de comidas y posibles mejoras.
-              - Usa las "Comidas del usuario por dia" para detectar platos repetidos, horarios, concentracion de calorias, falta de proteina, exceso de carbohidratos o poca variedad.
-              - Usa la "Memoria semantica historica similar" para reconocer patrones alimenticios repetidos del usuario, pero no la menciones como tecnologia.
-              - No recomiendes "registrar mas comidas", "usar la app" ni acciones administrativas. Recomienda cambios alimenticios reales.
-              - Prioriza calidad de alimentos, balance de plato, saciedad, proteinas, fibra, hidratacion, snacks, variedad, porciones y distribucion de comidas.
-              - Si detectas un problema, explica que cambiar y por que, con una alternativa concreta.
-              - Da sugerencias realistas para una persona comun: opciones faciles de comprar, cocinar o preparar.
-              - Recomienda snacks cuando ayuden al patron observado, por ejemplo yogur griego con fruta, huevos cocidos, queso campesino, frutos secos medidos, fruta con mantequilla de mani, hummus con verduras, atun con galletas integrales o batido con proteina.
-              - Si hay exceso de arroz, harinas o carbohidratos y poca proteina, sugiere reducir una parte del carbohidrato y agregar proteina como pollo, huevos, atun, carne magra, yogur griego, lentejas, frijoles, garbanzos o tofu.
-              - Si la dieta se ve repetitiva, sugiere variantes concretas del mismo plato: cambiar arroz blanco por papa, yuca moderada, quinoa, arroz integral o mas verduras; alternar sancocho con ensalada con proteina, bowl balanceado o sopa con legumbres.
-              - Si faltan verduras o fibra, recomienda agregar ensalada, verduras salteadas, aguacate medido, frutas enteras, legumbres o semillas.
-              - Si las grasas son altas, sugiere ajustes concretos como moderar aceites, fritos, salsas o porciones de aguacate, sin eliminar alimentos completos.
-              - Si las calorias se concentran en una comida, sugiere repartir la energia con desayuno, cena ligera o snacks proteicos.
-              - Cada description debe ser corta, util, accionable y mencionar una comida, snack o cambio especifico cuando aplique.
-              - Responde solo JSON, sin markdown.
-
-              Periodo: ${input.period}
-              Dias analizados: ${input.totalDays}
-              Comidas registradas: ${input.meals.length}
-              Notas disponibles: ${input.notes.length}
-              Calorias totales: ${totals.calories}
-              Proteinas totales: ${totals.proteins}g
-              Carbohidratos totales: ${totals.carbs}g
-              Grasas totales: ${totals.fats}g
-
-              Notas del usuario:
-              ${userNotesContext}
-
-              Comidas del usuario por dia:
-              ${userMealsContext}
-
-              Memoria semantica historica similar:
-              ${semanticMemoryContext}
-
-              Contexto base:
-              ${sourceText}
-            `,
-            },
-          ],
-        },
-      ],
-      generationConfig: {
-        responseMimeType: 'application/json',
-      },
-    };
-  }
-
   private async getGeminiErrorMessage(response: Response): Promise<string> {
     try {
       const error = (await response.json()) as GeminiErrorResponse;
@@ -215,6 +124,7 @@ export class RecommendationAiService {
     const recommendations = this.normalizeRecommendations(
       parsed.recommendations,
     );
+    const comparison = this.normalizeComparison(parsed.comparison, input);
 
     if (!recommendations.length) {
       return null;
@@ -222,6 +132,7 @@ export class RecommendationAiService {
 
     return {
       period: input.period,
+      comparison,
       summary:
         this.normalizeSummary(parsed.summary) ??
         this.buildQualitativeFallbackSummary(input),
@@ -265,6 +176,64 @@ export class RecommendationAiService {
       : undefined;
   }
 
+  private normalizeComparison(
+    comparison: RecommendationComparison | undefined,
+    input: RecommendationAnalysisInput,
+  ): RecommendationComparison {
+    if (!comparison || typeof comparison !== 'object') {
+      return this.buildUnavailableComparison(input);
+    }
+
+    return {
+      available: comparison.available === true,
+      summary:
+        this.normalizeSummary(comparison.summary) ??
+        this.buildUnavailableComparison(input).summary,
+      improvements: this.normalizeComparisonItems(comparison.improvements, 3),
+      needsAttention: this.normalizeComparisonItems(
+        comparison.needsAttention,
+        3,
+      ),
+      stablePatterns: this.normalizeComparisonItems(
+        comparison.stablePatterns,
+        2,
+      ),
+    };
+  }
+
+  private normalizeComparisonItems(
+    items: RecommendationComparisonItem[] | undefined,
+    limit: number,
+  ): RecommendationComparisonItem[] {
+    if (!Array.isArray(items)) {
+      return [];
+    }
+
+    return items
+      .map((item) => ({
+        category:
+          typeof item.category === 'string' ? item.category.trim() : undefined,
+        description:
+          typeof item.description === 'string' ? item.description.trim() : '',
+      }))
+      .filter((item) => item.description.length > 0)
+      .slice(0, limit);
+  }
+
+  private buildUnavailableComparison(
+    input: RecommendationAnalysisInput,
+  ): RecommendationComparison {
+    return {
+      available: false,
+      summary: `No hay informacion suficiente en los dos meses historicos (${this.buildComparisonWindowContext(
+        input,
+      )}) para una comparacion confiable.`,
+      improvements: [],
+      needsAttention: [],
+      stablePatterns: [],
+    };
+  }
+
   private cleanJsonText(text: string): string {
     return text
       .trim()
@@ -289,75 +258,16 @@ export class RecommendationAiService {
     return `El periodo muestra ${input.meals.length} comidas registradas, con una carga aproximada de ${totals.calories} calorias y un balance de ${totals.proteins}g de proteina, ${totals.carbs}g de carbohidratos y ${totals.fats}g de grasas. ${notesText}`;
   }
 
-  private buildUserNotesContext(input: RecommendationAnalysisInput): string {
-    if (!input.notes.length) {
-      return 'No hay notas del usuario para este periodo.';
-    }
-
-    return input.notes.map((note) => `- ${note.date}: ${note.note}`).join('\n');
-  }
-
-  private buildUserMealsContext(input: RecommendationAnalysisInput): string {
-    if (!input.meals.length) {
-      return 'No hay comidas registradas para este periodo.';
-    }
-
-    const mealsByDate = input.meals.reduce<Map<string, string[]>>(
-      (groupedMeals, meal) => {
-        const dateMeals = groupedMeals.get(meal.date) ?? [];
-
-        dateMeals.push(
-          `${meal.time} - ${meal.type}: ${meal.name} (${meal.calories} kcal, proteina ${meal.proteins ?? 0}g, carbohidratos ${meal.carbs ?? 0}g, grasas ${meal.fats ?? 0}g)`,
-        );
-        groupedMeals.set(meal.date, dateMeals);
-
-        return groupedMeals;
-      },
-      new Map<string, string[]>(),
-    );
-
-    return Array.from(mealsByDate.entries())
-      .map(([date, meals]) =>
-        [`- ${date}:`, ...meals.map((meal) => `  * ${meal}`)].join('\n'),
-      )
-      .join('\n');
-  }
-
-  private buildSemanticMemoryContext(
-    similarContent: SimilarEmbeddingResult[],
-  ): string {
-    if (!similarContent.length) {
-      return 'No hay recuerdos alimenticios similares guardados para este usuario.';
-    }
-
-    return similarContent
-      .map(
-        (item) =>
-          `- ${item.sourceType} #${item.sourceId} (similitud ${item.similarity.toFixed(
-            3,
-          )}): ${this.truncateText(item.content, 1200)}`,
-      )
-      .join('\n');
-  }
-
-  private buildEmbeddingSearchText(
+  private buildComparisonWindowContext(
     input: RecommendationAnalysisInput,
-    sourceText: string,
   ): string {
-    return [
-      `Periodo: ${input.period}`,
-      `Notas: ${this.buildUserNotesContext(input)}`,
-      `Comidas: ${this.buildUserMealsContext(input)}`,
-      `Contexto: ${sourceText}`,
-    ].join('\n');
-  }
+    const comparisonWindow = input.semanticMemoryComparisonWindow;
 
-  private truncateText(text: string, maxLength: number): string {
-    if (text.length <= maxLength) {
-      return text;
+    if (!comparisonWindow) {
+      return 'sin ventanas temporales especificas';
     }
 
-    return `${text.slice(0, maxLength).trim()}...`;
+    return `primer mes ${comparisonWindow.firstMonth.startDate} a ${comparisonWindow.firstMonth.endDate}; segundo mes ${comparisonWindow.secondMonth.startDate} a ${comparisonWindow.secondMonth.endDate}`;
   }
 
   private calculateTotals(input: RecommendationAnalysisInput): MacroTotals {

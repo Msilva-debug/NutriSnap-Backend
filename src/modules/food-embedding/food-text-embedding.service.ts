@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Between, In, Repository } from 'typeorm';
 import { DailyFoodNote } from '../meal/entities/daily-food-note.entity';
+import { Meal } from '../meal/entities/meal.entity';
 import {
   FoodTextEmbedding,
   FoodTextEmbeddingSourceType,
@@ -29,6 +30,13 @@ interface UpsertEmbeddingParams {
   userId: number;
 }
 
+interface MacroTotals {
+  calories: number;
+  carbs: number;
+  fats: number;
+  proteins: number;
+}
+
 export interface SimilarEmbeddingResult {
   content: string;
   similarity: number;
@@ -37,6 +45,10 @@ export interface SimilarEmbeddingResult {
 }
 
 interface FindSimilarContentOptions {
+  dateRange?: {
+    endDate: string;
+    startDate: string;
+  };
   excludeSources?: Array<{
     sourceId: number;
     sourceType: FoodTextEmbeddingSourceType;
@@ -66,6 +78,8 @@ export class FoodTextEmbeddingService {
     private readonly foodTextEmbeddingRepository: Repository<FoodTextEmbedding>,
     @InjectRepository(DailyFoodNote)
     private readonly dailyFoodNoteRepository: Repository<DailyFoodNote>,
+    @InjectRepository(Meal)
+    private readonly mealRepository: Repository<Meal>,
   ) {}
 
   async upsertSourceEmbedding(
@@ -125,11 +139,13 @@ export class FoodTextEmbeddingService {
   async upsertDailyNoteEmbedding(
     dailyFoodNote: DailyFoodNote,
   ): Promise<FoodTextEmbedding | null> {
+    const content = await this.buildDailyNoteContent(dailyFoodNote);
+
     return this.upsertSourceEmbedding({
       userId: dailyFoodNote.userId,
       sourceType: FoodTextEmbeddingSourceType.DAILY_NOTE,
       sourceId: dailyFoodNote.id,
-      content: this.buildDailyNoteContent(dailyFoodNote),
+      content,
     });
   }
 
@@ -154,9 +170,10 @@ export class FoodTextEmbeddingService {
         return [];
       }
 
-      const storedEmbeddings = await this.foodTextEmbeddingRepository.find({
-        where: { userId },
-      });
+      const storedEmbeddings = await this.findStoredEmbeddings(
+        userId,
+        options,
+      );
 
       return storedEmbeddings
         .filter(
@@ -206,6 +223,37 @@ export class FoodTextEmbeddingService {
     return {
       dailyNotes: dailyNotesCount,
     };
+  }
+
+  private async findStoredEmbeddings(
+    userId: number,
+    options: FindSimilarContentOptions,
+  ): Promise<FoodTextEmbedding[]> {
+    if (!options.dateRange) {
+      return this.foodTextEmbeddingRepository.find({
+        where: { userId },
+      });
+    }
+
+    const dailyNotes = await this.dailyFoodNoteRepository.find({
+      where: {
+        userId,
+        date: Between(options.dateRange.startDate, options.dateRange.endDate),
+      },
+    });
+    const sourceIds = dailyNotes.map((dailyNote) => dailyNote.id);
+
+    if (!sourceIds.length) {
+      return [];
+    }
+
+    return this.foodTextEmbeddingRepository.find({
+      where: {
+        userId,
+        sourceType: FoodTextEmbeddingSourceType.DAILY_NOTE,
+        sourceId: In(sourceIds),
+      },
+    });
   }
 
   async syncCurrentDateDailyNoteEmbeddings(
@@ -311,12 +359,118 @@ export class FoodTextEmbeddingService {
     return process.env.GEMINI_EMBEDDING_MODEL?.trim() ?? this.defaultModel;
   }
 
-  private buildDailyNoteContent(dailyFoodNote: DailyFoodNote): string {
+  private async buildDailyNoteContent(
+    dailyFoodNote: DailyFoodNote,
+  ): Promise<string> {
+    const meals = await this.mealRepository.find({
+      where: {
+        userId: dailyFoodNote.userId,
+        date: dailyFoodNote.date,
+      },
+      order: {
+        time: 'ASC',
+      },
+    });
+    const totals = this.calculateTotals(meals);
+
     return [
       `Fecha: ${dailyFoodNote.date}`,
-      'Tipo: nota diaria de alimentacion',
+      'Tipo: memoria diaria de alimentacion',
       `Nota del usuario: ${dailyFoodNote.note}`,
+      '',
+      'Comidas registradas:',
+      this.buildMealsContent(meals),
+      '',
+      'Totales del dia:',
+      `Calorias: ${totals.calories}`,
+      `Proteinas: ${totals.proteins}g`,
+      `Carbohidratos: ${totals.carbs}g`,
+      `Grasas: ${totals.fats}g`,
+      '',
+      'Resumen automatico del patron:',
+      this.buildDailyPatternSummary(meals, totals),
     ].join('\n');
+  }
+
+  private buildMealsContent(meals: Meal[]): string {
+    if (!meals.length) {
+      return 'No hay comidas registradas para este dia.';
+    }
+
+    return meals
+      .map(
+        (meal) =>
+          `- ${meal.time} - ${meal.type}: ${meal.name} (${meal.calories} kcal, proteina ${meal.proteins ?? 0}g, carbohidratos ${meal.carbs ?? 0}g, grasas ${meal.fats ?? 0}g)`,
+      )
+      .join('\n');
+  }
+
+  private buildDailyPatternSummary(
+    meals: Meal[],
+    totals: MacroTotals,
+  ): string {
+    if (!meals.length) {
+      return 'Solo hay nota del usuario, sin comidas registradas para contrastar.';
+    }
+
+    const mealTypes = new Set(meals.map((meal) => meal.type));
+    const mealNames = meals.map((meal) => meal.name.toLowerCase()).join(' ');
+    const macroCalories =
+      totals.proteins * 4 + totals.carbs * 4 + totals.fats * 9;
+    const notes: string[] = [
+      `${meals.length} comidas registradas en ${mealTypes.size} tipos de comida.`,
+    ];
+
+    if (macroCalories > 0) {
+      const proteinShare = (totals.proteins * 4) / macroCalories;
+      const carbsShare = (totals.carbs * 4) / macroCalories;
+      const fatsShare = (totals.fats * 9) / macroCalories;
+
+      if (proteinShare < 0.2) {
+        notes.push('Proteina baja frente al resto de macronutrientes.');
+      } else if (proteinShare >= 0.25) {
+        notes.push('Buena presencia relativa de proteina.');
+      }
+
+      if (carbsShare > 0.55) {
+        notes.push('Carbohidratos altos frente al resto del dia.');
+      }
+
+      if (fatsShare > 0.35) {
+        notes.push('Grasas altas frente al resto del dia.');
+      }
+    }
+
+    if (/(arroz|pasta|pan|arepa|harina)/i.test(mealNames)) {
+      notes.push('Hay presencia de arroz, harinas o carbohidratos base.');
+    }
+
+    if (!/(ensalada|verdura|verduras|zanahoria|pepino|brocoli|legumbre|lenteja|frijol|garbanzo|fruta)/i.test(mealNames)) {
+      notes.push('No se observan muchas verduras, frutas o fuentes claras de fibra en los nombres de comidas.');
+    }
+
+    if (mealTypes.size <= 1 && meals.length > 1) {
+      notes.push('La energia parece concentrarse en pocos momentos del dia.');
+    }
+
+    return notes.join(' ');
+  }
+
+  private calculateTotals(meals: Meal[]): MacroTotals {
+    return meals.reduce(
+      (totals, meal) => ({
+        calories: totals.calories + Number(meal.calories ?? 0),
+        proteins: totals.proteins + Number(meal.proteins ?? 0),
+        carbs: totals.carbs + Number(meal.carbs ?? 0),
+        fats: totals.fats + Number(meal.fats ?? 0),
+      }),
+      {
+        calories: 0,
+        proteins: 0,
+        carbs: 0,
+        fats: 0,
+      },
+    );
   }
 
   private formatDateInTimeZone(date: Date): string {

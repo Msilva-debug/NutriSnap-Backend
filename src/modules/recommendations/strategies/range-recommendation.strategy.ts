@@ -6,6 +6,7 @@ import { DailyFoodNote } from '../../meal/entities/daily-food-note.entity';
 import { Meal } from '../../meal/entities/meal.entity';
 import { RecommendationAiService } from '../recommendation-ai.service';
 import {
+  buildTwoMonthComparisonWindow,
   countInclusiveDays,
   validateDateRange,
 } from '../recommendation-date.utils';
@@ -65,6 +66,7 @@ export class RangeRecommendationStrategy implements RecommendationStrategy {
       meals,
       notes,
       totalDays: countInclusiveDays(startDate, endDate),
+      semanticMemoryComparisonWindow: buildTwoMonthComparisonWindow(startDate),
       embeddingExclusions: notes.map((note) => ({
         sourceType: FoodTextEmbeddingSourceType.DAILY_NOTE,
         sourceId: note.id,

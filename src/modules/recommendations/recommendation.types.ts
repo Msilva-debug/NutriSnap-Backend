@@ -19,10 +19,34 @@ export interface Recommendation {
   title: string;
 }
 
+export interface RecommendationComparisonItem {
+  category?: string;
+  description: string;
+}
+
+export interface RecommendationComparison {
+  available: boolean;
+  improvements: RecommendationComparisonItem[];
+  needsAttention: RecommendationComparisonItem[];
+  stablePatterns: RecommendationComparisonItem[];
+  summary: string;
+}
+
 export interface RecommendationsResponse {
+  comparison: RecommendationComparison;
   period: RecommendationPeriod;
   recommendations: Recommendation[];
   summary?: string;
+}
+
+export interface SemanticMemoryDateRange {
+  endDate: string;
+  startDate: string;
+}
+
+export interface SemanticMemoryComparisonWindow {
+  firstMonth: SemanticMemoryDateRange;
+  secondMonth: SemanticMemoryDateRange;
 }
 
 export interface RecommendationAnalysisInput {
@@ -33,6 +57,7 @@ export interface RecommendationAnalysisInput {
   meals: Meal[];
   notes: DailyFoodNote[];
   period: RecommendationPeriod;
+  semanticMemoryComparisonWindow?: SemanticMemoryComparisonWindow;
   summary?: string;
   totalDays: number;
   userId: number;

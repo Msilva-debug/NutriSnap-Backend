@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { MealType } from '../meal/entities/meal.entity';
 import {
   Recommendation,
+  RecommendationComparison,
   RecommendationAnalysisInput,
   RecommendationsResponse,
 } from './recommendation.types';
@@ -21,8 +22,25 @@ export class RecommendationRuleEngine {
 
     return {
       period: input.period,
+      comparison: this.buildComparison(input),
       summary: this.buildSummary(input, totals),
       recommendations,
+    };
+  }
+
+  private buildComparison(
+    input: RecommendationAnalysisInput,
+  ): RecommendationComparison {
+    const memoryWindow = input.semanticMemoryComparisonWindow
+      ? `primer mes ${input.semanticMemoryComparisonWindow.firstMonth.startDate} a ${input.semanticMemoryComparisonWindow.firstMonth.endDate}; segundo mes ${input.semanticMemoryComparisonWindow.secondMonth.startDate} a ${input.semanticMemoryComparisonWindow.secondMonth.endDate}`
+      : 'sin ventanas temporales especificas';
+
+    return {
+      available: false,
+      summary: `No hay informacion suficiente en los dos meses historicos (${memoryWindow}) para una comparacion confiable.`,
+      improvements: [],
+      needsAttention: [],
+      stablePatterns: [],
     };
   }
 

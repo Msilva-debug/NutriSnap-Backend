@@ -54,8 +54,69 @@ export function countInclusiveDays(startDate: string, endDate: string): number {
   return Math.round((endTime - startTime) / millisecondsPerDay) + 1;
 }
 
+export function buildTwoMonthComparisonWindow(referenceDate: string): {
+  firstMonth: {
+    endDate: string;
+    startDate: string;
+  };
+  secondMonth: {
+    endDate: string;
+    startDate: string;
+  };
+} {
+  const secondMonthStartDate = subtractMonths(referenceDate, 1);
+
+  return {
+    firstMonth: {
+      startDate: subtractMonths(referenceDate, 2),
+      endDate: subtractOneDay(secondMonthStartDate),
+    },
+    secondMonth: {
+      startDate: secondMonthStartDate,
+      endDate: subtractOneDay(referenceDate),
+    },
+  };
+}
+
 function getUtcDateTime(date: string): number {
   const [year, month, day] = date.split('-').map(Number);
 
   return Date.UTC(year, month - 1, day);
+}
+
+function subtractMonths(date: string, monthsToSubtract: number): string {
+  const [year, month, day] = date.split('-').map(Number);
+  const targetMonthDate = new Date(
+    Date.UTC(year, month - 1 - monthsToSubtract, 1),
+  );
+  const targetYear = targetMonthDate.getUTCFullYear();
+  const targetMonth = targetMonthDate.getUTCMonth() + 1;
+  const targetDay = Math.min(day, getDaysInMonth(targetYear, targetMonth));
+
+  return formatUtcDate(targetYear, targetMonth, targetDay);
+}
+
+function subtractOneDay(date: string): string {
+  const [year, month, day] = date.split('-').map(Number);
+  const previousDate = new Date(Date.UTC(year, month - 1, day));
+
+  previousDate.setUTCDate(previousDate.getUTCDate() - 1);
+
+  return formatUtcDate(
+    previousDate.getUTCFullYear(),
+    previousDate.getUTCMonth() + 1,
+    previousDate.getUTCDate(),
+  );
+}
+
+function getDaysInMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+function formatUtcDate(year: number, month: number, day: number): string {
+  return [
+    String(year).padStart(4, '0'),
+    String(month).padStart(2, '0'),
+    String(day).padStart(2, '0'),
+  ].join('-');
 }

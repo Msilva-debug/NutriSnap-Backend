@@ -92,7 +92,8 @@ Cuando se guarda o edita una nota diaria:
 ```text
 PATCH /meal/history/note
   -> guarda daily_food_notes
-  -> genera embedding de la nota actualizada
+  -> obtiene comidas del mismo usuario y fecha
+  -> genera embedding con nota, comidas, macros totales y resumen automatico del patron
   -> guarda o actualiza food_text_embeddings
 ```
 
@@ -102,7 +103,7 @@ Todos los dias a las 11:58 PM, hora Colombia:
 cron diario
   -> busca las notas de la fecha actual
   -> valida si la nota ya tiene embedding
-  -> crea solo los embeddings faltantes
+  -> crea solo los embeddings faltantes con nota, comidas, macros y resumen del patron
 ```
 
 Cuando se piden recomendaciones:
@@ -151,6 +152,28 @@ Respuesta:
 {
   "period": "daily",
   "summary": "Resumen cualitativo del periodo analizado",
+  "comparison": {
+    "available": true,
+    "summary": "El segundo mes muestra mejor presencia de proteina frente al primero, aunque se mantiene una alta repeticion de arroz.",
+    "improvements": [
+      {
+        "category": "Proteina",
+        "description": "En el segundo mes aparecen mas comidas con pollo, huevos o atun frente al primero."
+      }
+    ],
+    "needsAttention": [
+      {
+        "category": "Variedad",
+        "description": "Se mantiene una presencia alta de arroz y pocas verduras en varias comidas."
+      }
+    ],
+    "stablePatterns": [
+      {
+        "category": "Casero",
+        "description": "La preferencia por comidas caseras se mantiene entre el primer y segundo mes."
+      }
+    ]
+  },
   "recommendations": [
     {
       "category": "Proteinas",

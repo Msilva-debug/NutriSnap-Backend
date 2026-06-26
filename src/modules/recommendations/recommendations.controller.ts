@@ -66,6 +66,81 @@ export class RecommendationsController {
           example:
             'Encontramos 18 comidas registradas en el periodo seleccionado.',
         },
+        comparison: {
+          type: 'object',
+          properties: {
+            available: {
+              type: 'boolean',
+              example: true,
+            },
+            summary: {
+              type: 'string',
+              example:
+                'El segundo mes muestra mejor distribucion de comidas frente al primero, pero conviene seguir cuidando la variedad de verduras.',
+            },
+            improvements: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  category: {
+                    type: 'string',
+                    example: 'Proteina',
+                  },
+                  description: {
+                    type: 'string',
+                    example:
+                      'En el segundo mes aparecen mas comidas con pollo, huevos o atun frente al primero.',
+                  },
+                },
+                required: ['description'],
+              },
+            },
+            needsAttention: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  category: {
+                    type: 'string',
+                    example: 'Variedad',
+                  },
+                  description: {
+                    type: 'string',
+                    example:
+                      'La presencia alta de arroz y pocas verduras se mantiene en ambos meses.',
+                  },
+                },
+                required: ['description'],
+              },
+            },
+            stablePatterns: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  category: {
+                    type: 'string',
+                    example: 'Casero',
+                  },
+                  description: {
+                    type: 'string',
+                    example:
+                      'La preferencia por comidas caseras se mantiene entre el primer y segundo mes.',
+                  },
+                },
+                required: ['description'],
+              },
+            },
+          },
+          required: [
+            'available',
+            'summary',
+            'improvements',
+            'needsAttention',
+            'stablePatterns',
+          ],
+        },
         recommendations: {
           type: 'array',
           items: {
@@ -89,7 +164,7 @@ export class RecommendationsController {
           },
         },
       },
-      required: ['period', 'recommendations'],
+      required: ['period', 'comparison', 'recommendations'],
     },
   })
   findRecommendations(
