@@ -5,6 +5,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { FoodPreparation } from '../../food-preparation/entities/food-preparation.entity';
 import { User } from '../../user/entities/user.entity';
 
 export enum MealType {
@@ -37,6 +38,9 @@ export class Meal {
   @Column({ type: 'int' })
   userId: number;
 
+  @Column({ type: 'int', nullable: true })
+  foodPreparationId?: number;
+
   @ManyToOne(() => User, {
     nullable: false,
     onDelete: 'CASCADE',
@@ -44,6 +48,14 @@ export class Meal {
   })
   @JoinColumn({ name: 'userId', referencedColumnName: 'id' })
   user: User;
+
+  @ManyToOne(() => FoodPreparation, {
+    nullable: true,
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'foodPreparationId', referencedColumnName: 'id' })
+  foodPreparation?: FoodPreparation;
 
   @Column({ type: 'float', nullable: true })
   proteins?: number;

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { GeminiService } from '../gemini/gemini.service';
 import { NutritionRecommendationAgent } from './agents/nutrition-recommendation.agent';
 import {
   Recommendation,
@@ -7,22 +8,6 @@ import {
   RecommendationComparisonItem,
   RecommendationsResponse,
 } from './recommendation.types';
-
-interface GeminiResponse {
-  candidates?: Array<{
-    content?: {
-      parts?: Array<{
-        text?: string;
-      }>;
-    };
-  }>;
-}
-
-interface GeminiErrorResponse {
-  error?: {
-    message?: string;
-  };
-}
 
 interface AiRecommendationsResponse {
   comparison?: RecommendationComparison;
@@ -40,25 +25,23 @@ interface MacroTotals {
 @Injectable()
 export class RecommendationAiService {
   private readonly logger = new Logger(RecommendationAiService.name);
-  private readonly geminiApiUrl =
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
   constructor(
     private readonly nutritionRecommendationAgent: NutritionRecommendationAgent,
+    private readonly geminiService: GeminiService,
   ) {}
 
   async buildFromText(
     input: RecommendationAnalysisInput,
     sourceText: string,
   ): Promise<RecommendationsResponse | null> {
-    const apiKey = process.env.GEMINI_API_KEY?.trim();
     const context = sourceText.trim();
 
     if (!context) {
       return null;
     }
 
-    if (!apiKey) {
+    if (!this.geminiService.hasApiKey()) {
       this.logger.warn(
         'GEMINI_API_KEY no esta configurada; usando recomendaciones por reglas',
       );
@@ -71,24 +54,11 @@ export class RecommendationAiService {
           input,
           context,
         );
-      const response = await fetch(`${this.geminiApiUrl}?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(geminiRequest),
+      const text = await this.geminiService.generateContent(geminiRequest, {
+        errorMessage: 'Gemini no pudo generar recomendaciones nutricionales',
+        unexpectedTextMessage:
+          'Gemini no devolvio texto para recomendaciones',
       });
-
-      if (!response.ok) {
-        this.logger.warn(await this.getGeminiErrorMessage(response));
-        return null;
-      }
-
-      const data = (await response.json()) as GeminiResponse;
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (!text) {
-        this.logger.warn('Gemini no devolvio texto para recomendaciones');
-        return null;
-      }
 
       return this.parseRecommendations(input, text);
     } catch (error) {
@@ -98,19 +68,6 @@ export class RecommendationAiService {
           : 'No se pudieron generar recomendaciones con IA',
       );
       return null;
-    }
-  }
-
-  private async getGeminiErrorMessage(response: Response): Promise<string> {
-    try {
-      const error = (await response.json()) as GeminiErrorResponse;
-
-      return (
-        error.error?.message ??
-        'Gemini no pudo generar recomendaciones nutricionales'
-      );
-    } catch {
-      return 'Gemini no pudo generar recomendaciones nutricionales';
     }
   }
 

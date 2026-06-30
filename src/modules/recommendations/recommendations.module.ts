@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { FoodEmbeddingModule } from '../food-embedding/food-embedding.module';
+import { GeminiModule } from '../gemini/gemini.module';
 import { DailyFoodNote } from '../meal/entities/daily-food-note.entity';
 import { Meal } from '../meal/entities/meal.entity';
 import { NutritionPlan } from '../nutrition-plan/entities/nutrition-plan.entity';
@@ -19,6 +20,7 @@ import { RangeRecommendationStrategy } from './strategies/range-recommendation.s
     TypeOrmModule.forFeature([Meal, DailyFoodNote, NutritionPlan]),
     AuthModule,
     FoodEmbeddingModule,
+    GeminiModule,
   ],
   controllers: [RecommendationsController],
   providers: [

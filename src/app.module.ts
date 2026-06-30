@@ -8,6 +8,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ActivityLevelModule } from './modules/activity-level/activity-level.module';
 import { NutritionPlanModule } from './modules/nutrition-plan/nutrition-plan.module';
 import { RecommendationsModule } from './modules/recommendations/recommendations.module';
+import { FoodPreparationModule } from './modules/food-preparation/food-preparation.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { RecommendationsModule } from './modules/recommendations/recommendations
     UsersModule,
     AuthModule,
     MealModule,
+    FoodPreparationModule,
     RecommendationsModule,
     ActivityLevelModule,
     NutritionPlanModule,

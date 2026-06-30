@@ -31,7 +31,11 @@ export class MealService {
     private readonly foodTextEmbeddingService: FoodTextEmbeddingService,
   ) {}
 
-  async create(createMealDto: CreateMealDto, userId: number): Promise<Meal> {
+  async create(
+    createMealDto: CreateMealDto,
+    userId: number,
+    foodPreparationId?: number,
+  ): Promise<Meal> {
     this.validateMealType(createMealDto.type);
     const now = new Date();
 
@@ -42,6 +46,7 @@ export class MealService {
       date: this.formatServerDate(now),
       type: createMealDto.type,
       userId,
+      foodPreparationId,
       proteins:
         createMealDto.proteins !== undefined
           ? Number(createMealDto.proteins)

@@ -2,8 +2,8 @@ import {
   BadGatewayException,
   BadRequestException,
   Injectable,
-  InternalServerErrorException,
 } from '@nestjs/common';
+import { GeminiService } from '../gemini/gemini.service';
 
 export interface UploadedMealImage {
   buffer: Buffer;
@@ -21,56 +21,20 @@ export interface FoodAnalysisResult {
   micronutrients: string;
 }
 
-interface GeminiResponse {
-  candidates?: Array<{
-    content?: {
-      parts?: Array<{
-        text?: string;
-      }>;
-    };
-  }>;
-}
-
-interface GeminiErrorResponse {
-  error?: {
-    message?: string;
-  };
-}
-
 @Injectable()
 export class MealImageAnalysisService {
-  private readonly geminiApiUrl =
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+  constructor(private readonly geminiService: GeminiService) {}
 
   async analyze(image: UploadedMealImage): Promise<FoodAnalysisResult> {
     this.validateImage(image);
 
-    const apiKey = process.env.GEMINI_API_KEY?.trim();
-
-    if (!apiKey) {
-      throw new InternalServerErrorException(
-        'GEMINI_API_KEY no esta configurada en el servidor',
-      );
-    }
-
-    const response = await fetch(`${this.geminiApiUrl}?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(this.buildGeminiRequest(image)),
-    });
-
-    if (!response.ok) {
-      throw new BadGatewayException(
-        await this.getGeminiErrorMessage(response),
-      );
-    }
-
-    const data = (await response.json()) as GeminiResponse;
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!text) {
-      throw new BadGatewayException('Respuesta inesperada del analizador IA');
-    }
+    const text = await this.geminiService.generateContent(
+      this.buildGeminiRequest(image),
+      {
+        errorMessage: 'Error al llamar al analizador IA',
+        unexpectedTextMessage: 'Respuesta inesperada del analizador IA',
+      },
+    );
 
     return this.parseAnalysisResult(text);
   }
@@ -99,17 +63,30 @@ export class MealImageAnalysisService {
               },
             },
             {
-              text: `Analiza esta imagen de comida y proporciona la informacion nutricional en JSON con el siguiente formato exacto:
-{
-  "name": "nombre del plato",
-  "calories": numero de calorias,
-  "proteins_g": gramos de proteina,
-  "carbs_g": gramos de carbohidratos,
-  "fats_g": gramos de grasas,
-  "micronutrients": "lista de micronutrientes principales"
-}
+              text: `Analiza esta imagen para NutriSnap y proporciona la informacion nutricional en JSON con el siguiente formato exacto:
+            {
+              "name": "nombre del plato",
+              "calories": numero de calorias,
+              "proteins_g": gramos de proteina,
+              "carbs_g": gramos de carbohidratos,
+              "fats_g": gramos de grasas,
+              "micronutrients": "lista de micronutrientes principales"
+            }
 
-Se detallado y realista en tus calculos. Solo devuelve el JSON, sin explicaciones adicionales.`,
+            Reglas importantes:
+            - Si la imagen muestra una comida o plato preparado, estima los nutrientes de forma realista segun los alimentos visibles y una porcion probable.
+            - Si la imagen muestra la parte trasera de un producto, una tabla nutricional, etiqueta nutricional, nutrition facts o informacion de macronutrientes, prioriza los valores de esa etiqueta sobre cualquier estimacion visual.
+            - Si hay etiqueta nutricional legible, extrae calorias, proteina, carbohidratos y grasas directamente de la etiqueta.
+            - Si la etiqueta trae valores por porcion, usa los valores por porcion.
+            - Si la etiqueta trae valores por envase o paquete completo y no hay valores por porcion, usa los valores por envase.
+            - Si la etiqueta solo trae valores por 100 g o 100 ml, usa esos valores e indicalo en "micronutrients".
+            - Si aparecen tanto valores por porcion como por 100 g, usa por porcion.
+            - Si la etiqueta trae tamano de porcion y porciones por envase, no multipliques por todo el envase a menos que la etiqueta indique explicitamente valores por envase.
+            - Si algun macronutriente no se ve claramente, estima solo ese campo con cuidado usando el resto de la etiqueta o el tipo de producto.
+            - Si el nombre del producto es visible, usalo en "name"; si no, usa "Producto con etiqueta nutricional".
+            - En "micronutrients", incluye micronutrientes relevantes visibles en la etiqueta, por ejemplo sodio, fibra, azucares, calcio, hierro, potasio o vitaminas. Tambien menciona si los valores usados son por porcion, por envase o por 100 g/ml.
+            - No inventes beneficios de salud ni explicaciones medicas.
+            - Devuelve solo el JSON, sin markdown ni explicaciones adicionales.`,
             },
           ],
         },
@@ -118,16 +95,6 @@ Se detallado y realista en tus calculos. Solo devuelve el JSON, sin explicacione
         responseMimeType: 'application/json',
       },
     };
-  }
-
-  private async getGeminiErrorMessage(response: Response): Promise<string> {
-    try {
-      const error = (await response.json()) as GeminiErrorResponse;
-
-      return error.error?.message ?? 'Error al llamar al analizador IA';
-    } catch {
-      return 'Error al llamar al analizador IA';
-    }
   }
 
   private parseAnalysisResult(text: string): FoodAnalysisResult {

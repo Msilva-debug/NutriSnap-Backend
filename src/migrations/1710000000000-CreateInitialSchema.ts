@@ -169,6 +169,7 @@ export class CreateInitialSchema1710000000000 implements MigrationInterface {
         date DATE NOT NULL,
         type meals_type_enum NOT NULL,
         "userId" INTEGER NOT NULL,
+        "foodPreparationId" INTEGER,
         proteins DOUBLE PRECISION,
         carbs DOUBLE PRECISION,
         fats DOUBLE PRECISION,
@@ -183,6 +184,64 @@ export class CreateInitialSchema1710000000000 implements MigrationInterface {
     await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS "IDX_meals_user_date"
       ON meals ("userId", date);
+    `);
+
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS "IDX_meals_food_preparation"
+      ON meals ("foodPreparationId");
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS food_preparations (
+        id SERIAL PRIMARY KEY,
+        "userId" INTEGER NOT NULL,
+        name VARCHAR NOT NULL,
+        description TEXT NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'active',
+        servings INTEGER NOT NULL DEFAULT 1,
+        "caloriesPerServing" INTEGER NOT NULL,
+        "proteinsPerServing" DOUBLE PRECISION NOT NULL,
+        "carbsPerServing" DOUBLE PRECISION NOT NULL,
+        "fatsPerServing" DOUBLE PRECISION NOT NULL,
+        micronutrients TEXT,
+        notes TEXT,
+        "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
+        "updatedAt" TIMESTAMP NOT NULL DEFAULT now(),
+        CONSTRAINT "FK_food_preparations_user"
+          FOREIGN KEY ("userId")
+          REFERENCES users(id)
+          ON DELETE CASCADE
+          ON UPDATE CASCADE
+      );
+    `);
+
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS "IDX_food_preparations_user"
+      ON food_preparations ("userId");
+    `);
+
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS "IDX_food_preparations_user_status"
+      ON food_preparations ("userId", status);
+    `);
+
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conname = 'FK_meals_food_preparation'
+        ) THEN
+          ALTER TABLE meals
+          ADD CONSTRAINT "FK_meals_food_preparation"
+            FOREIGN KEY ("foodPreparationId")
+            REFERENCES food_preparations(id)
+            ON DELETE SET NULL
+            ON UPDATE CASCADE;
+        END IF;
+      END
+      $$;
     `);
 
     await queryRunner.query(`
@@ -248,6 +307,10 @@ export class CreateInitialSchema1710000000000 implements MigrationInterface {
 
     await queryRunner.query(`
       DROP TABLE IF EXISTS meals;
+    `);
+
+    await queryRunner.query(`
+      DROP TABLE IF EXISTS food_preparations;
     `);
 
     await queryRunner.query(`
