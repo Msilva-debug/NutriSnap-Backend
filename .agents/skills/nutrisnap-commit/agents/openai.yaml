@@ -1,0 +1,4 @@
+interface:
+  display_name: "NutriSnap Commit"
+  short_description: "Commits with Karen or Mateo identity"
+  default_prompt: "Use $nutrisnap-commit to create a commit as Karen or Mateo."
