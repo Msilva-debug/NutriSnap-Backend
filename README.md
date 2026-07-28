@@ -40,6 +40,28 @@ npm run start:dev
 npm test
 ```
 
+## Desarrollo Dirigido Por Especificaciones
+
+El proyecto usa OpenSpec para proponer y validar cambios antes de implementarlos. La
+configuracion y las reglas compartidas estan en `openspec/config.yaml`; las capacidades
+vigentes se documentan en `openspec/specs` y cada iniciativa en curso se prepara bajo
+`openspec/changes` con su propuesta, diseno, requisitos y lista de tareas.
+
+La primera iniciativa describe el seguimiento de entrenamiento asistido por IA:
+
+```text
+openspec/changes/add-ai-workout-tracking/
+├── proposal.md
+├── design.md
+├── tasks.md
+└── specs/
+```
+
+Antes de implementar una iniciativa se deben revisar sus escenarios, resolver las
+preguntas abiertas del diseno y acordar el contrato OpenAPI entre backend y frontend.
+Cuando todas las tareas y verificaciones hayan terminado, el cambio se puede archivar y
+sus requisitos pasan a representar el comportamiento vigente en `openspec/specs`.
+
 ## Embeddings De Texto
 
 NutriSnap utiliza text embeddings para crear una memoria semantica alimenticia por usuario.

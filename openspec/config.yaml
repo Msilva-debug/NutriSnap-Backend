@@ -1,0 +1,27 @@
+schema: spec-driven
+
+context: |
+  NutriSnap es una aplicacion con backend NestJS, TypeORM y PostgreSQL.
+  Actualmente registra alimentacion y usa Gemini para analizar imagenes y generar
+  recomendaciones. El siguiente dominio que se incorporara es el entrenamiento en
+  gimnasio, manteniendo separadas las responsabilidades de frontend, backend e IA.
+
+  Los clientes deben ser mobile-first y accesibles. La API usa JWT y Swagger/OpenAPI.
+  Toda recomendacion relacionada con dolor es orientacion general, no diagnostico
+  medico, y debe priorizar detener el ejercicio y buscar ayuda profesional cuando
+  existan senales de alarma.
+
+rules:
+  proposal:
+    - Delimitar explicitamente el MVP y lo que queda fuera de alcance.
+    - Indicar el impacto esperado en frontend, backend, datos e IA.
+  design:
+    - Incluir decisiones de privacidad, seguridad y degradacion cuando la IA falle.
+    - Mantener la logica nutricional y de entrenamiento en modulos separados.
+  specs:
+    - Escribir requisitos normativos con SHALL y escenarios Given/When/Then.
+    - Incluir estados exitosos, vacios, errores, permisos y baja confianza de IA.
+    - No presentar recomendaciones de IA como diagnosticos medicos.
+  tasks:
+    - Separar tareas de contrato, backend, frontend, IA, pruebas y observabilidad.
+    - No marcar una tarea completa sin una prueba o verificacion equivalente.
