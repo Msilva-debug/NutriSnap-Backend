@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddFoodPreparationStatus1710000000006
-  implements MigrationInterface
-{
+export class AddFoodPreparationStatus1710000000006 implements MigrationInterface {
   name = 'AddFoodPreparationStatus1710000000006';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

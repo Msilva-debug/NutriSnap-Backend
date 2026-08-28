@@ -1,5 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { existsSync, readFileSync } from 'fs';
+import { join } from 'path';
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
@@ -11,17 +13,46 @@ import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { JwtUserResolver } from '../auth/jwt-user.resolver';
 import { Meal } from './entities/meal.entity';
 
+const defaultSocketCorsOrigins = ['http://127.0.0.1:5173'];
+
+function getEnvValue(key: string): string | undefined {
+  const processValue = process.env[key];
+
+  if (processValue) {
+    return processValue;
+  }
+
+  const envPath = join(process.cwd(), '.env');
+
+  if (!existsSync(envPath)) {
+    return undefined;
+  }
+
+  const envLine = readFileSync(envPath, 'utf8')
+    .split(/\r?\n/)
+    .find((line) => line.trim().startsWith(`${key}=`));
+
+  return envLine?.split('=').slice(1).join('=').trim().replace(/^["']|["']$/g, '');
+}
+
+function getSocketCorsOrigins(): string[] {
+  const origins = getEnvValue('WS_CORS_ORIGINS') ?? getEnvValue('CORS_ORIGINS');
+
+  if (!origins) {
+    return defaultSocketCorsOrigins;
+  }
+
+  return origins
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+}
+
 @Injectable()
 @WebSocketGateway({
   namespace: '/meals',
   cors: {
-    origin: [
-      'http://localhost:4200',
-      'http://127.0.0.1:4200',
-      'http://localhost:5173',
-      'http://127.0.0.1:5173',
-      'https://f006-161-18-228-190.ngrok-free.app',
-    ],
+    origin: getSocketCorsOrigins(),
     credentials: true,
   },
 })

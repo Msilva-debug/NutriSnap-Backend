@@ -1,17 +1,20 @@
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
+  const corsOrigins = (
+    configService.get<string>('CORS_ORIGINS') ?? 'http://localhost:4200'
+  )
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
   app.enableCors({
-    origin: [
-      'http://localhost:4200',
-      'http://127.0.0.1:4200',
-      'http://localhost:5173',
-      'http://127.0.0.1:5173',
-      'https://f006-161-18-228-190.ngrok-free.app',
-    ],
+    origin: corsOrigins,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
@@ -28,8 +31,8 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+  SwaggerModule.setup('swagger', app, document);
 
-  await app.listen(process.env.PORT ?? 8080);
+  await app.listen(Number(configService.get<string>('PORT', '8080')));
 }
 void bootstrap();

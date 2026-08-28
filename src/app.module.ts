@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { UsersModule } from './modules/user/user.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -10,24 +10,41 @@ import { NutritionPlanModule } from './modules/nutrition-plan/nutrition-plan.mod
 import { RecommendationsModule } from './modules/recommendations/recommendations.module';
 import { FoodPreparationModule } from './modules/food-preparation/food-preparation.module';
 
+function getBooleanConfig(
+  configService: ConfigService,
+  key: string,
+  defaultValue: boolean,
+): boolean {
+  const value = configService.get<string>(key);
+
+  if (value === undefined) {
+    return defaultValue;
+  }
+
+  return value.trim().toLowerCase() === 'true';
+}
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
     ScheduleModule.forRoot(),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      password: 'admin',
-      username: 'postgres',
-      database: 'nutrisnap',
-      entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      migrations: [__dirname + '/migrations/*{.ts,.js}'],
-      migrationsRun: true,
-      synchronize: false,
-      dropSchema: false,
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        host: configService.get<string>('DB_HOST', 'localhost'),
+        port: Number(configService.get<string>('DB_PORT', '5432')),
+        password: configService.get<string>('DB_PASSWORD', 'admin'),
+        username: configService.get<string>('DB_USERNAME', 'postgres'),
+        database: configService.get<string>('DB_DATABASE', 'nutrisnap'),
+        entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        migrations: [__dirname + '/migrations/*{.ts,.js}'],
+        migrationsRun: getBooleanConfig(configService, 'DB_MIGRATIONS_RUN', true),
+        synchronize: getBooleanConfig(configService, 'DB_SYNCHRONIZE', false),
+        dropSchema: getBooleanConfig(configService, 'DB_DROP_SCHEMA', false),
+      }),
     }),
     UsersModule,
     AuthModule,
