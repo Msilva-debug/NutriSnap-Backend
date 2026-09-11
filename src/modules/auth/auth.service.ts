@@ -40,7 +40,7 @@ export class AuthService {
     const token = this.extractToken(authenticationHeader);
 
     if (!token) {
-      throw new UnauthorizedException('Token no enviado');
+      throw new UnauthorizedException('Token invalido o expirado');
     }
 
     try {
@@ -61,17 +61,19 @@ export class AuthService {
   }
 
   private extractToken(authenticationHeader?: string): string | undefined {
-    if (!authenticationHeader) {
+    const normalizedHeader = authenticationHeader?.trim();
+
+    if (!normalizedHeader) {
       return undefined;
     }
 
-    const [type, token] = authenticationHeader.split(' ');
+    const bearerMatch = /^Bearer\s+(.+)$/i.exec(normalizedHeader);
 
-    if (type?.toLowerCase() === 'bearer' && token) {
-      return token;
+    if (bearerMatch) {
+      return bearerMatch[1].trim();
     }
 
-    return authenticationHeader;
+    return normalizedHeader;
   }
 
   private buildAuthenticatedUser(user: User) {

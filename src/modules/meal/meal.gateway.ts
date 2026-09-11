@@ -32,7 +32,12 @@ function getEnvValue(key: string): string | undefined {
     .split(/\r?\n/)
     .find((line) => line.trim().startsWith(`${key}=`));
 
-  return envLine?.split('=').slice(1).join('=').trim().replace(/^["']|["']$/g, '');
+  return envLine
+    ?.split('=')
+    .slice(1)
+    .join('=')
+    .trim()
+    .replace(/^["']|["']$/g, '');
 }
 
 function getSocketCorsOrigins(): string[] {
@@ -76,7 +81,9 @@ export class MealGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const user = await this.jwtUserResolver.resolve(payload);
       const room = this.getUserRoom(user.id);
 
-      client.data.userId = user.id;
+      const clientData = client.data as { userId?: number };
+
+      clientData.userId = user.id;
       await client.join(room);
     } catch {
       client.disconnect(true);
@@ -84,7 +91,7 @@ export class MealGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   handleDisconnect(client: Socket): void {
-    const userId = client.data.userId;
+    const userId = (client.data as { userId?: unknown }).userId;
 
     if (typeof userId === 'number') {
       void client.leave(this.getUserRoom(userId));
@@ -96,22 +103,22 @@ export class MealGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private extractToken(client: Socket): string | undefined {
-    const authToken = client.handshake.auth?.token;
+    const authToken = (client.handshake.auth as { token?: unknown }).token;
 
     if (typeof authToken === 'string' && authToken.trim()) {
-      return authToken;
+      return authToken.trim();
     }
 
-    const authorizationHeader = client.handshake.headers.authorization;
+    const authorizationHeader = client.handshake.headers.authorization?.trim();
 
     if (!authorizationHeader) {
       return undefined;
     }
 
-    const [type, token] = authorizationHeader.split(' ');
+    const bearerMatch = /^Bearer\s+(.+)$/i.exec(authorizationHeader);
 
-    if (type?.toLowerCase() === 'bearer' && token) {
-      return token;
+    if (bearerMatch) {
+      return bearerMatch[1].trim();
     }
 
     return authorizationHeader;
